@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Graph Investigator - OpenChain IR{% endblock %}
+
+{% block content %}
+<div class="row h-100">
+    <!-- Sidebar Controls -->
+    <div class="col-md-3 bg-light border-end p-0 d-flex flex-column h-100">
+        <div class="p-3 border-bottom">
+            <h5 class="mb-3"><i class="fas fa-project-diagram me-2"></i>Graph Investigator</h5>
+            <form id="investigateForm" class="mb-3">
+                <div class="mb-2">
+                    <label class="form-label small">Target Address</label>
+                    <input type="text" class="form-control form-control-sm" id="targetAddress" placeholder="0x..."
+                        required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">Chain</label>
+                    <select class="form-select form-select-sm" id="targetChain">
+                        <option value="ethereum">Ethereum</option>
+                        <option value="bitcoin">Bitcoin</option>
+                        <option value="solana">Solana</option>
+                        <option value="tron">Tron</option>
+                        <option value="polygon">Polygon</option>
+                        <option value="bsc">BSC</option>
+                    </select>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i> Trace
+                        Flow</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="p-3 flex-grow-1 overflow-auto">
+            <h6 class="text-muted small">Graph Controls</h6>
+            <div class="mb-2">
+                <button class="btn btn-outline-secondary btn-sm w-100 mb-1"
+                    onclick="cy.layout({name: 'breadthfirst'}).run()">Tree Layout</button>
+                <button class="btn btn-outline-secondary btn-sm w-100 mb-1"
+                    onclick="cy.layout({name: 'concentric'}).run()">Concentric</button>
+                <button class="btn btn-outline-secondary btn-sm w-100 mb-1"
+                    onclick="cy.layout({name: 'cose'}).run()">Organic</button>
+            </div>
+
+            <h6 class="text-muted small mt-3">Node Details</h6>
+            <div id="nodeDetails" class="small text-break">
+                <p class="text-secondary fst-italic">Click a node to see details.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graph Area -->
+    <div class="col-md-9 p-0 bg-dark position-relative">
+        <div id="cy" style="width: 100%; height: 100%;"></div>
+
+        <!-- Legend -->
+        <div class="position-absolute bottom-0 end-0 m-3 p-2 bg-white rounded shadow opacity-75 small">
+            <div><span class="badge bg-danger rounded-circle me-1">&nbsp;</span> Target</div>
+            <div><span class="badge bg-primary rounded-circle me-1">&nbsp;</span> Wallet</div>
+            <div><span class="badge bg-warning text-dark rounded-circle me-1">&nbsp;</span> Exchange</div>
+            <div><span class="badge bg-dark rounded-circle me-1">&nbsp;</span> Risky</div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="position-absolute top-50 start-50 translate-middle d-none">
+            <div class="spinner-border text-light" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+<script>
+    let cy;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize Cytoscape
+        cy = cytoscape({
+            container: document.getElementById('cy'),
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': '#007bff',
+                        'label': 'data(label)',
+                        'color': '#fff',
+                        'text-valign': 'bottom',
+                        'text-halign': 'center',
+                        'text-outline-width': 1,
+                        'text-outline-color': '#000',
+                        'width': 40,
+                        'height': 40,
+                        'font-size': 10
+                    }
+                },
+                {
+                    selector: 'node.root',
+                    style: {
+                        'background-color': '#dc3545', // Red for target
+                        'width': 60,
+                        'height': 60,
+                        'font-size': 12,
+                        'font-weight': 'bold'
+                    }
+                },
+                {
+                    selector: 'node[type="exchange"]',
+                    style: {
+                        'background-color': '#ffc107',
+                        'shape': 'diamond'
+                    }
+                },
+                {
+                    selector: 'node[risk > 75]',
+                    style: {
+                        'border-width': 3,
+                        'border-color': '#dc3545'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#6c757d',
+                        'target-arrow-color': '#6c757d',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                        'label': 'data(label)',
+                        'font-size': 8,
+                        'color': '#ccc',
+                        'text-background-opacity': 1,
+                        'text-background-color': '#343a40',
+                        'text-background-shape': 'round-rectangle',
+                        'text-border-width': 0
+                    }
+                }
+            ],
+            layout: {
+                name: 'breadthfirst',
+                directed: true,
+                padding: 10
+            }
+        });
+
+        // Handle Node Click
+        cy.on('tap', 'node', function (evt) {
+            var node = evt.target;
+            var details = `
+                <strong>Address:</strong><br>${node.data('full_address')}<br>
+                <strong>Label:</strong> ${node.data('label')}<br>
+                <strong>Type:</strong> ${node.data('type')}<br>
+                <strong>Risk Score:</strong> ${node.data('risk')}/100
+            `;
+            document.getElementById('nodeDetails').innerHTML = details;
+        });
+
+        // Form Submit
+        document.getElementById('investigateForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const address = document.getElementById('targetAddress').value;
+            const chain = document.getElementById('targetChain').value;
+
+            if (!address) return;
+
+            document.getElementById('loading').classList.remove('d-none');
+
+            fetch('/api/graph_data?address=' + address + '&chain=' + chain)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading').classList.add('d-none');
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                        return;
+                    }
+
+                    cy.elements().remove();
+                    cy.add(data.elements);
+
+                    // Specialized Layout: Senders -> Target -> Receivers
+                    // For now, breadthfirst is decent, but we can organize somewhat manually
+                    // Or rely on the layout algo
+                    cy.layout({
+                        name: 'breadthfirst',
+                        directed: true,
+                        roots: cy.nodes('.root'),
+                        padding: 20
+                    }).run();
+
+                })
+                .catch(err => {
+                    document.getElementById('loading').classList.add('d-none');
+                    console.error(err);
+                    alert("Failed to load graph data");
+                });
+        });
+    });
+</script>
+{% endblock %}

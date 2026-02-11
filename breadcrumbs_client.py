@@ -152,7 +152,16 @@ class BreadcrumbsClient:
         return elements
 
     def _map_to_internal_chain(self, bc_chain):
-        map_ = {'eth': 'ethereum', 'btc': 'bitcoin', 'sol': 'solana', 'tron': 'tron', 'bsc': 'bsc', 'matic': 'polygon', 'arb': 'arbitrum', 'op': 'optimism'}
+        map_ = {
+            'eth': 'ethereum', 
+            'btc': 'bitcoin', 
+            'sol': 'solana', 
+            'tron': 'tron', 
+            'bsc': 'bsc', 
+            'matic': 'polygon', 
+            'arb': 'arbitrum', 
+            'op': 'optimism'
+        }
         return map_.get(bc_chain, 'ethereum')
 
     def scan_all_chains(self, address):

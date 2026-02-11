@@ -19,6 +19,7 @@ from batch_analyzer import BatchAnalyzer
 from breadcrumbs_client import BreadcrumbsClient
 from pathfinder import PathFinder
 from monitoring import MonitoringSystem
+from ml_engine import ml_engine
 
 monitoring_system = MonitoringSystem()
 case_manager = CaseManager()
@@ -230,9 +231,15 @@ def investigation():
                 # 3. ML Anomaly Detection (#9)
                 if ADVANCED_FEATURES_AVAILABLE and txs:
                     try:
-                        anomalies = AnomalyDetector.detect_anomalies(txs)
+                        # Use new ML Engine
+                        anomalies = ml_engine.detect_anomalies(txs)
                         current_case["anomalies"] = anomalies
-                        print(f"[+] ML Anomaly Detection: {len(anomalies)} anomalies found")
+                        
+                        # Use Pattern Recognition
+                        patterns = ml_engine.detect_patterns(txs, address)
+                        current_case["patterns"] = patterns
+                        
+                        print(f"[+] ML Engine: {len(anomalies)} anomalies, {len(patterns)} patterns detected")
                     except Exception as e:
                         print(f"[!] Anomaly detection error: {e}")
                 
@@ -382,6 +389,7 @@ def investigation():
                          clustering_results=current_case.get('clustering_results', {}),
                          threat_intel=current_case.get('threat_intel_results', {}),
                          anomalies=current_case.get('anomalies', []),
+                         patterns=current_case.get('patterns', []),
                          taint_results=current_case.get('taint_results', {}),
                          contract_results=current_case.get('contract_results', {}),
                          defi_results=current_case.get('defi_results', {}))
@@ -1089,5 +1097,42 @@ def api_export_case(case_id):
         db.close()
 
 
+# ==================== INVESTIGATOR ROUTE (Phase 3) ====================
+
+@app.route("/investigator", methods=["GET"])
+def investigator():
+    """New Graph Investigator Tab"""
+    return render_template("investigator.html", active_page="investigator")
+
+@app.route("/api/graph_data", methods=["GET"])
+def api_graph_data():
+    """API to fetch graph data for the Investigator tab"""
+    address = request.args.get("address")
+    chain = request.args.get("chain", "ethereum")
+    
+    if not address:
+        return jsonify({"error": "No address provided"}), 400
+        
+    try:
+        # Use Breadcrumbs Client
+        BREADCRUMBS_KEY = "81CGNLRY9ICK6HOK5D52XIG6D7RXG5"
+        client = BreadcrumbsClient(etherscan_key=ETHERSCAN_KEY, breadcrumbs_key=BREADCRUMBS_KEY)
+        
+        # Determine chain_id for MultiChain fallback if needed in Client
+        from eth_live import SUPPORTED_CHAINS
+        chain_id = SUPPORTED_CHAINS.get(chain.lower(), 1)
+        if chain.lower() == 'bitcoin': chain_id = 0 # Dummy ID for non-EVM
+        if chain.lower() == 'solana': chain_id = -1
+        if chain.lower() == 'tron': chain_id = -2
+        
+        print(f"[Investigator] Fetching graph for {address} on {chain}...")
+        elements = client.get_graph_data(address, chain_id=chain_id)
+        
+        return jsonify({"elements": elements})
+        
+    except Exception as e:
+        print(f"[!] Graph API Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
-    app.run(debug=False, port=5000, use_reloader=False)
+    app.run(debug=True, port=5000)
