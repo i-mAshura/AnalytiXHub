@@ -153,36 +153,34 @@
                 </div>
                 {% endif %}
 
-                <!-- PATTERNS SECTION -->
-                {% if summary.patterns %}
-                <div class="alert alert-warning mt-4">
-                    <strong>🔍 DETECTED PATTERNS:</strong>
+                <!-- PATTERNS SECTION (ML Engine) -->
+                {% if patterns %}
+                <div class="alert alert-warning mt-4 border-warning">
+                    <strong>🔍 ML BEHAVIORAL PATTERNS DETECTED:</strong>
                     <div class="mt-2">
-                        {% set pattern_descriptions = {
-                        'rapid_succession': 'Rapid Succession - Multiple transactions within 60 seconds (structuring
-                        indicator)',
-                        'high_frequency_wallet': 'High Frequency Wallet - More than 50 transactions in period',
-                        'mixing_service_suspicion': 'Mixing Service Behavior - Many inputs consolidated into few
-                        outputs',
-                        'consolidation_pattern': 'Consolidation Pattern - Small inputs merged into large outputs (fund
-                        pooling)',
-                        'layering_pattern': 'Layering Pattern - Complex multi-hop transactions (AML obfuscation)',
-                        'dust_transactions': 'Dust Transactions - Very small transfers (<0.01 ETH)' } %} {% for
-                            pattern_name, pattern_data in summary.patterns.items() %} {% if pattern_data==True %} <p
-                            class="mb-2"><span class="badge bg-warning text-white">{{
-                                pattern_descriptions.get(pattern_name, pattern_name|title) }}</span></p>
-                            {% elif pattern_data is iterable and pattern_data is not string %}
-                            {% if pattern_data|length > 0 %}
-                            <p class="mb-2"><span class="badge bg-warning text-white">{{ pattern_name|replace('_', '
-                                    ')|title }}: {{ pattern_data|length }} cases detected</span></p>
+                        {% for pattern in patterns %}
+                        <div class="mb-2 p-2 border border-secondary rounded bg-dark">
+                            <span
+                                class="badge bg-{{ 'danger' if pattern.severity == 'High' else 'warning text-dark' }} mb-1">{{
+                                pattern.type }}</span>
+                            <small class="text-muted ms-2">Severity: {{ pattern.severity }}</small>
+                            <p class="mb-0 small text-light mt-1">{{ pattern.description }}</p>
+                            {% if pattern.entities %}
+                            <div class="mt-1">
+                                <small class="text-muted">Involved Entities:</small><br>
+                                {% for entity in pattern.entities[:5] %}
+                                <span class="badge bg-secondary text-light font-monospace" style="font-size: 0.7em;">{{
+                                    entity[:8] }}...</span>
+                                {% endfor %}
+                            </div>
                             {% endif %}
-                            {% endif %}
-                            {% endfor %}
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
                 {% else %}
                 <div class="alert alert-success mt-4">
-                    <strong>✓ No suspicious patterns detected</strong>
+                    <strong>✓ No suspicious behavioral patterns detected</strong>
                 </div>
                 {% endif %}
             </div>
@@ -304,7 +302,7 @@
                                         {{ "%.2f"|format(anom.anomaly_score) }}
                                     </span>
                                 </td>
-                                <td><small>{% for reason in anom.reasons %}{{ reason }}<br>{% endfor %}</small></td>
+                                <td><small class="text-light">{{ anom.anomaly_reason }}</small></td>
                             </tr>
                             {% endfor %}
                         </tbody>
