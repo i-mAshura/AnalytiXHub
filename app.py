@@ -227,9 +227,19 @@ def investigation():
                             print(f"[!] THREAT ALERT: Address flagged by {threat_check['threat_sources']}")
                     except Exception as e:
                         print(f"[!] Threat Intel error: {e}")
+                else:
+                    # Fallback Threat Intelligence (Mock/Basic)
+                    is_bad = address.lower() in ['0x123', '0xbad'] # Placeholder
+                    current_case["threat_intel_results"] = {
+                        "is_flagged": is_bad,
+                        "severity": "High" if is_bad else "Low",
+                        "confidence": 0.0,
+                        "threat_sources": [],
+                        "threat_types": []
+                    }
                 
                 # 3. ML Anomaly Detection (#9)
-                if ADVANCED_FEATURES_AVAILABLE and txs:
+                if txs:
                     try:
                         # Use new ML Engine
                         anomalies = ml_engine.detect_anomalies(txs)
