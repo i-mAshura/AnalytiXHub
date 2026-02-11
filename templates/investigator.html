@@ -3,70 +3,155 @@
 {% block title %}Graph Investigator - OpenChain IR{% endblock %}
 
 {% block content %}
-<div class="row h-100">
+<style>
+    /* Cyber Theme Overrides for Investigator */
+    .cyber-card {
+        background-color: #0d1117;
+        border: 1px solid #30363d;
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+    }
+
+    .cyber-input {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        color: #c9d1d9;
+    }
+
+    .cyber-input:focus {
+        background-color: #161b22;
+        border-color: #00f0ff;
+        color: #fff;
+        box-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+    }
+
+    .btn-cyber {
+        background: linear-gradient(45deg, #00f0ff, #0077ff);
+        border: none;
+        color: #000;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .btn-cyber:hover {
+        background: linear-gradient(45deg, #00c3ff, #0056b3);
+        color: #fff;
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+    }
+
+    #cy {
+        background-color: #050505;
+        /* Deep black for graph bg */
+        background-image:
+            linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+
+    .node-details-panel {
+        background: rgba(13, 17, 23, 0.95);
+        border-left: 1px solid #00f0ff;
+        backdrop-filter: blur(5px);
+    }
+</style>
+
+<div class="row h-100 g-0">
     <!-- Sidebar Controls -->
-    <div class="col-md-3 bg-light border-end p-0 d-flex flex-column h-100">
-        <div class="p-3 border-bottom">
-            <h5 class="mb-3"><i class="fas fa-project-diagram me-2"></i>Graph Investigator</h5>
+    <div class="col-md-3 bg-dark border-end border-secondary p-0 d-flex flex-column h-100 cyber-card">
+        <div class="p-4 border-bottom border-secondary">
+            <h5 class="mb-4 text-info fw-bold"><i class="fas fa-project-diagram me-2"></i>GRAPH <span
+                    class="text-light">INVESTIGATOR</span></h5>
             <form id="investigateForm" class="mb-3">
-                <div class="mb-2">
-                    <label class="form-label small">Target Address</label>
-                    <input type="text" class="form-control form-control-sm" id="targetAddress" placeholder="0x..."
-                        required>
+                <div class="mb-3">
+                    <label class="form-label small text-muted text-uppercase fw-bold">Target Address</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-dark border-secondary text-info"><i
+                                class="bi bi-hash"></i></span>
+                        <input type="text" class="form-control cyber-input" id="targetAddress" placeholder="0x..."
+                            required>
+                    </div>
                 </div>
-                <div class="mb-2">
-                    <label class="form-label small">Chain</label>
-                    <select class="form-select form-select-sm" id="targetChain">
-                        <option value="ethereum">Ethereum</option>
-                        <option value="bitcoin">Bitcoin</option>
-                        <option value="solana">Solana</option>
-                        <option value="tron">Tron</option>
-                        <option value="polygon">Polygon</option>
-                        <option value="bsc">BSC</option>
+                <div class="mb-4">
+                    <label class="form-label small text-muted text-uppercase fw-bold">Blockchain</label>
+                    <select class="form-select form-select-sm cyber-input" id="targetChain">
+                        <option value="ethereum">Ethereum (ETH)</option>
+                        <option value="bitcoin">Bitcoin (BTC)</option>
+                        <option value="solana">Solana (SOL)</option>
+                        <option value="tron">Tron (TRX)</option>
+                        <option value="polygon">Polygon (MATIC)</option>
+                        <option value="bsc">Binance Smart Chain</option>
                     </select>
                 </div>
                 <div class="d-grid">
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i> Trace
-                        Flow</button>
+                    <button type="submit" class="btn btn-cyber btn-sm py-2"><i class="fas fa-search me-2"></i> INITIATE
+                        TRACE</button>
                 </div>
             </form>
         </div>
 
-        <div class="p-3 flex-grow-1 overflow-auto">
-            <h6 class="text-muted small">Graph Controls</h6>
-            <div class="mb-2">
-                <button class="btn btn-outline-secondary btn-sm w-100 mb-1"
-                    onclick="cy.layout({name: 'breadthfirst'}).run()">Tree Layout</button>
-                <button class="btn btn-outline-secondary btn-sm w-100 mb-1"
-                    onclick="cy.layout({name: 'concentric'}).run()">Concentric</button>
-                <button class="btn btn-outline-secondary btn-sm w-100 mb-1"
-                    onclick="cy.layout({name: 'cose'}).run()">Organic</button>
+        <div class="p-4 flex-grow-1 overflow-auto">
+            <h6 class="text-muted small text-uppercase fw-bold mb-3">Visualization Controls</h6>
+            <div class="row g-2 mb-4">
+                <div class="col-4">
+                    <button class="btn btn-outline-secondary btn-sm w-100"
+                        onclick="cy.layout({name: 'breadthfirst', animated: true}).run()"><i
+                            class="bi bi-diagram-3"></i> Tree</button>
+                </div>
+                <div class="col-4">
+                    <button class="btn btn-outline-secondary btn-sm w-100"
+                        onclick="cy.layout({name: 'concentric', animated: true}).run()"><i class="bi bi-bullseye"></i>
+                        Circle</button>
+                </div>
+                <div class="col-4">
+                    <button class="btn btn-outline-secondary btn-sm w-100"
+                        onclick="cy.layout({name: 'grid', animated: true}).run()"><i class="bi bi-grid"></i>
+                        Grid</button>
+                </div>
             </div>
 
-            <h6 class="text-muted small mt-3">Node Details</h6>
-            <div id="nodeDetails" class="small text-break">
-                <p class="text-secondary fst-italic">Click a node to see details.</p>
+            <h6 class="text-muted small text-uppercase fw-bold mb-2">Node Intelligence</h6>
+            <div id="nodeDetails" class="small text-break p-3 rounded bg-black border border-secondary"
+                style="min-height: 100px;">
+                <p class="text-secondary fst-italic mb-0 text-center mt-3">
+                    <i class="bi bi-mouse me-2"></i>Select a node to inspect
+                </p>
+            </div>
+        </div>
+
+        <!-- Status Footer -->
+        <div class="p-3 border-top border-secondary bg-black small">
+            <div class="d-flex justify-content-between text-muted">
+                <span><i class="bi bi-circle-fill text-success me-1"></i>System Active</span>
+                <span id="nodeCount">0 Nodes</span>
             </div>
         </div>
     </div>
 
     <!-- Graph Area -->
-    <div class="col-md-9 p-0 bg-dark position-relative">
+    <div class="col-md-9 p-0 bg-black position-relative">
         <div id="cy" style="width: 100%; height: 100%;"></div>
 
         <!-- Legend -->
-        <div class="position-absolute bottom-0 end-0 m-3 p-2 bg-white rounded shadow opacity-75 small">
-            <div><span class="badge bg-danger rounded-circle me-1">&nbsp;</span> Target</div>
-            <div><span class="badge bg-primary rounded-circle me-1">&nbsp;</span> Wallet</div>
-            <div><span class="badge bg-warning text-dark rounded-circle me-1">&nbsp;</span> Exchange</div>
-            <div><span class="badge bg-dark rounded-circle me-1">&nbsp;</span> Risky</div>
+        <div class="position-absolute bottom-0 end-0 m-4 p-3 rounded shadow-lg border border-secondary"
+            style="background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);">
+            <div class="small fw-bold text-muted mb-2 text-uppercase">Legend</div>
+            <div class="d-flex align-items-center mb-1"><span class="badge rounded-circle p-1 me-2"
+                    style="background-color: #ff0055;">&nbsp;</span> <span class="text-light">Target/High Risk</span>
+            </div>
+            <div class="d-flex align-items-center mb-1"><span class="badge rounded-circle p-1 me-2"
+                    style="background-color: #00f0ff;">&nbsp;</span> <span class="text-light">Standard Wallet</span>
+            </div>
+            <div class="d-flex align-items-center mb-1"><span class="badge rounded-circle p-1 me-2"
+                    style="background-color: #ffcc00;">&nbsp;</span> <span class="text-light">Exchange/Service</span>
+            </div>
         </div>
 
         <!-- Loading Spinner -->
-        <div id="loading" class="position-absolute top-50 start-50 translate-middle d-none">
-            <div class="spinner-border text-light" role="status">
+        <div id="loading" class="position-absolute top-50 start-50 translate-middle d-none text-center">
+            <div class="spinner-border text-info" role="status" style="width: 3rem; height: 3rem;">
                 <span class="visually-hidden">Loading...</span>
             </div>
+            <div class="mt-3 text-info fw-bold letter-spacing-2">TRACING BLOCKCHAIN DATA...</div>
         </div>
     </div>
 </div>
@@ -78,82 +163,129 @@
     let cy;
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Initialize Cytoscape
+        // Initialize Cytoscape with Cyber Theme
         cy = cytoscape({
             container: document.getElementById('cy'),
             style: [
                 {
                     selector: 'node',
                     style: {
-                        'background-color': '#007bff',
+                        'background-color': '#00f0ff', // Neon Cyan
                         'label': 'data(label)',
-                        'color': '#fff',
+                        'color': '#00f0ff',
                         'text-valign': 'bottom',
                         'text-halign': 'center',
-                        'text-outline-width': 1,
-                        'text-outline-color': '#000',
-                        'width': 40,
-                        'height': 40,
-                        'font-size': 10
+                        'text-outline-width': 0,
+                        'width': 20,
+                        'height': 20,
+                        'font-size': 10,
+                        'font-family': 'Consolas, monospace',
+                        'text-background-color': '#000',
+                        'text-background-opacity': 0.7,
+                        'text-background-padding': 3,
+                        'text-background-shape': 'round-rectangle',
+                        'overlay-color': '#00f0ff',
+                        'overlay-opacity': 0.2
                     }
                 },
                 {
                     selector: 'node.root',
                     style: {
-                        'background-color': '#dc3545', // Red for target
-                        'width': 60,
-                        'height': 60,
+                        'background-color': '#ff0055', // Neon Red/Pink
+                        'color': '#ff0055',
+                        'width': 40,
+                        'height': 40,
                         'font-size': 12,
-                        'font-weight': 'bold'
+                        'font-weight': 'bold',
+                        'border-width': 2,
+                        'border-color': '#fff',
+                        'shadow-blur': 10,
+                        'shadow-color': '#ff0055'
                     }
                 },
                 {
                     selector: 'node[type="exchange"]',
                     style: {
-                        'background-color': '#ffc107',
-                        'shape': 'diamond'
+                        'background-color': '#ffcc00', // Neon Yellow
+                        'color': '#ffcc00',
+                        'shape': 'diamond',
+                        'width': 25,
+                        'height': 25
                     }
                 },
                 {
-                    selector: 'node[risk > 75]',
+                    selector: 'node[type="wanna_cry"]',
                     style: {
-                        'border-width': 3,
-                        'border-color': '#dc3545'
+                        'background-color': '#ff0000',
+                        'color': '#ff0000',
+                        'width': 30,
+                        'height': 30
                     }
                 },
                 {
                     selector: 'edge',
                     style: {
-                        'width': 2,
-                        'line-color': '#6c757d',
-                        'target-arrow-color': '#6c757d',
+                        'width': 1,
+                        'line-color': '#30363d',
+                        'target-arrow-color': '#30363d',
                         'target-arrow-shape': 'triangle',
                         'curve-style': 'bezier',
+                        'arrow-scale': 1.5,
+                        'opacity': 0.8
+                    }
+                },
+                {
+                    selector: 'edge[amount > 0]',
+                    style: {
                         'label': 'data(label)',
                         'font-size': 8,
-                        'color': '#ccc',
+                        'color': '#8b949e',
                         'text-background-opacity': 1,
-                        'text-background-color': '#343a40',
+                        'text-background-color': '#0d1117',
                         'text-background-shape': 'round-rectangle',
-                        'text-border-width': 0
+                        'text-background-padding': 2,
+                        'width': 2,
+                        'line-color': '#238636', // Subtle Green
+                        'target-arrow-color': '#238636'
+                    }
+                },
+                {
+                    selector: ':selected',
+                    style: {
+                        'border-width': 2,
+                        'border-color': '#fff',
+                        'background-color': '#fff'
                     }
                 }
             ],
             layout: {
                 name: 'breadthfirst',
                 directed: true,
-                padding: 10
+                padding: 30,
+                spacingFactor: 1.5
             }
         });
 
         // Handle Node Click
         cy.on('tap', 'node', function (evt) {
             var node = evt.target;
+            var data = node.data();
+
+            // Cyber-styled details panel
+            var riskColor = data.risk > 70 ? 'text-danger' : (data.risk > 30 ? 'text-warning' : 'text-success');
+            var riskBar = `
+                <div class="progress mt-2" style="height: 6px; background-color: #30363d;">
+                    <div class="progress-bar ${data.risk > 70 ? 'bg-danger' : 'bg-success'}" 
+                         role="progressbar" style="width: ${data.risk}%"></div>
+                </div>`;
+
             var details = `
-                <strong>Address:</strong><br>${node.data('full_address')}<br>
-                <strong>Label:</strong> ${node.data('label')}<br>
-                <strong>Type:</strong> ${node.data('type')}<br>
-                <strong>Risk Score:</strong> ${node.data('risk')}/100
+                <div class="text-light">
+                    <div class="mb-2"><span class="text-muted small text-uppercase">Label</span><br><span class="fw-bold text-info">${data.label}</span></div>
+                    <div class="mb-2"><span class="text-muted small text-uppercase">Address</span><br><span class="font-monospace small">${data.full_address}</span></div>
+                    <div class="mb-2"><span class="text-muted small text-uppercase">Type</span><br><span class="badge border border-secondary text-light">${data.type.toUpperCase()}</span></div>
+                    <div><span class="text-muted small text-uppercase">Risk Score</span> <span class="${riskColor} fw-bold float-end">${data.risk}/100</span>${riskBar}</div>
+                </div>
             `;
             document.getElementById('nodeDetails').innerHTML = details;
         });
@@ -173,6 +305,7 @@
                 .then(data => {
                     document.getElementById('loading').classList.add('d-none');
                     if (data.error) {
+                        // Display error in a nice way
                         alert("Error: " + data.error);
                         return;
                     }
@@ -180,21 +313,25 @@
                     cy.elements().remove();
                     cy.add(data.elements);
 
-                    // Specialized Layout: Senders -> Target -> Receivers
-                    // For now, breadthfirst is decent, but we can organize somewhat manually
-                    // Or rely on the layout algo
+                    // Cyber Layout Application
                     cy.layout({
                         name: 'breadthfirst',
                         directed: true,
                         roots: cy.nodes('.root'),
-                        padding: 20
+                        padding: 50,
+                        spacingFactor: 1.25,
+                        animate: true,
+                        animationDuration: 1000,
+                        animationEasing: 'ease-out-cubic'
                     }).run();
+
+                    // Update stats
+                    document.getElementById('nodeCount').innerHTML = `${cy.nodes().length} Nodes`;
 
                 })
                 .catch(err => {
                     document.getElementById('loading').classList.add('d-none');
                     console.error(err);
-                    alert("Failed to load graph data");
                 });
         });
     });
