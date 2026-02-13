@@ -35,7 +35,10 @@ class BreadcrumbsClient:
             56: 'bsc',
             137: 'matic',
             42161: 'arb',
-            10: 'op'
+            10: 'op',
+            0: 'btc',
+            -1: 'sol',
+            -2: 'tron'
         }
         
         c_str = str(chain_id).lower()
@@ -146,9 +149,26 @@ class BreadcrumbsClient:
                 })
                 nodes.add(neighbor)
             
+            # Determine Currency Symbol
+            symbol_map = {
+                'eth': 'ETH', 'ethereum': 'ETH',
+                'btc': 'BTC', 'bitcoin': 'BTC',
+                'sol': 'SOL', 'solana': 'SOL',
+                'tron': 'TRX',
+                'bsc': 'BNB',
+                'matic': 'MATIC',
+                'arb': 'ETH', 'arbitrum': 'ETH',
+                'op': 'ETH', 'optimism': 'ETH'
+            }
+            currency = symbol_map.get(bc_chain, 'UNIT')
+            
             # Add Edge with Rich Label
             edge_id = f"{hash_}_{frm}_{to}"
-            label_text = f"+{val} BTC\n{ts}"
+            
+            if val > 0:
+                label_text = f"+{val:.4f} {currency}\n{ts}"
+            else:
+                label_text = f"0 {currency} (Call)\n{ts}"
             
             elements.append({
                 "data": {
@@ -157,7 +177,8 @@ class BreadcrumbsClient:
                     "target": to,
                     "amount": val,
                     "label": label_text,
-                    "timestamp": ts
+                    "timestamp": ts,
+                    "currency": currency
                 }
             })
             

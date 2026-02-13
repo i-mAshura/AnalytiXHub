@@ -898,7 +898,7 @@ def tracing():
 def api_trace(address):
     """Get graph data for Cytoscape"""
     from modules.fetchers.breadcrumbs_client import BreadcrumbsClient
-    from pathfinder import PathFinder
+    from modules.utils.pathfinder import PathFinder
     
     # Get chain_id from query (default to 1 'Ethereum')
     chain_id = request.args.get('chain', 1)
@@ -981,7 +981,7 @@ def api_pathfinder():
     if not source or not target:
         return jsonify({"error": "Missing source or target address"}), 400
         
-    from pathfinder import PathFinder
+    from modules.utils.pathfinder import PathFinder
     pf = PathFinder()
     try:
         result = pf.find_path(source, target, chain_id)
@@ -1174,11 +1174,12 @@ def api_graph_data():
         
     try:
         # Use Breadcrumbs Client
+        from modules.fetchers.breadcrumbs_client import BreadcrumbsClient
         BREADCRUMBS_KEY = "81CGNLRY9ICK6HOK5D52XIG6D7RXG5"
         client = BreadcrumbsClient(etherscan_key=ETHERSCAN_KEY, breadcrumbs_key=BREADCRUMBS_KEY)
         
         # Determine chain_id for MultiChain fallback if needed in Client
-        from eth_live import SUPPORTED_CHAINS
+        from modules.fetchers.eth_live import SUPPORTED_CHAINS
         chain_id = SUPPORTED_CHAINS.get(chain.lower(), 1)
         if chain.lower() == 'bitcoin': chain_id = 0 # Dummy ID for non-EVM
         if chain.lower() == 'solana': chain_id = -1
