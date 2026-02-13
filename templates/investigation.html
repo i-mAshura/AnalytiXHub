@@ -32,6 +32,13 @@
                         <option value="blast" {% if current_chain=='blast' %}selected{% endif %}>Blast (BLAST)</option>
                         <option value="linea" {% if current_chain=='linea' %}selected{% endif %}>Linea (ETH)</option>
                     </optgroup>
+                    <optgroup label="🌐 Non-EVM Chains">
+                        <option value="bitcoin" {% if current_chain=='bitcoin' %}selected{% endif %}>Bitcoin (BTC)
+                        </option>
+                        <option value="solana" {% if current_chain=='solana' %}selected{% endif %}>Solana (SOL)</option>
+                        <option value="tron" {% if current_chain=='tron' %}selected{% endif %}>Tron (TRX)</option>
+                        <option value="xrp" {% if current_chain=='xrp' %}selected{% endif %}>XRP Ledger (XRP)</option>
+                    </optgroup>
                     <optgroup label="🧪 Testnets">
                         <option value="sepolia" {% if current_chain=='sepolia' %}selected{% endif %}>Sepolia Testnet
                             (ETH)</option>
@@ -79,6 +86,8 @@
         <ul class="nav nav-tabs card-header-tabs" id="irTabs" role="tablist">
             <li class="nav-item"><a class="nav-link active" id="overview-tab" data-bs-toggle="tab" href="#overview"
                     role="tab">1. Overview</a></li>
+            <li class="nav-item"><a class="nav-link" id="transactions-tab" data-bs-toggle="tab" href="#transactions"
+                    role="tab">📜 Transactions</a></li>
             <li class="nav-item"><a class="nav-link" id="charts-tab" data-bs-toggle="tab" href="#charts" role="tab">2.
                     Charts</a></li>
             <li class="nav-item"><a class="nav-link" id="clustering-tab" data-bs-toggle="tab" href="#clustering"
@@ -119,20 +128,20 @@
                     <div class="col-md-4">
                         <div class="stat-box">
                             <div class="stat-val text-success">+{{ "%.2f"|format(summary.total_volume_in) }}</div>
-                            <div class="stat-label">Total Inflow</div>
+                            <div class="stat-label">Total Inflow ({{ currency }})</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="stat-box">
                             <div class="stat-val text-danger">-{{ "%.2f"|format(summary.total_volume_out) }}</div>
-                            <div class="stat-label">Total Outflow</div>
+                            <div class="stat-label">Total Outflow ({{ currency }})</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="stat-box">
                             <div class="stat-val {{ 'text-success' if summary.net_flow > 0 else 'text-danger' }}">{{
                                 "%.2f"|format(summary.net_flow) }}</div>
-                            <div class="stat-label">Net Flow</div>
+                            <div class="stat-label">Net Flow ({{ currency }})</div>
                         </div>
                     </div>
                 </div>
@@ -145,7 +154,8 @@
                         {% if alert is string %}
                         <li>{{ alert }}</li>
                         {% else %}
-                        <li>{{ alert.amount|default('Unknown') }} ETH → {{ alert.name|default('Unknown Entity') }} ({{
+                        <li>{{ alert.amount|default('Unknown') }} {{ currency }} → {{ alert.name|default('Unknown
+                            Entity') }} ({{
                             alert.type|default('Unknown') }})</li>
                         {% endif %}
                         {% endfor %}
@@ -170,7 +180,7 @@
                                 <small class="text-muted">Involved Entities:</small><br>
                                 {% for entity in pattern.entities[:5] %}
                                 <span class="badge bg-secondary text-light font-monospace" style="font-size: 0.7em;">{{
-                                    entity[:8] }}...</span>
+                                    entity }}</span>
                                 {% endfor %}
                             </div>
                             {% endif %}
@@ -212,7 +222,7 @@
                     <p class="text-white mb-0">Addresses with multiple interactions (potential related wallets)</p>
                     {% for cp in clustering_results.suspicious_counterparties[:10] %}
                     <small class="d-block text-white">
-                        <span class="font-monospace">{{ cp.address[:16] }}...</span>
+                        <span class="font-monospace">{{ cp.address }}</span>
                         (Risk: {{ "%.1f"|format(cp.risk_score * 100) }}%)
                     </small>
                     {% endfor %}
@@ -224,7 +234,7 @@
                     <h6>Dust Attack Detection</h6>
                     <p class="text-white mb-0">Small amounts sent to many addresses (marker for address testing)</p>
                     {% for dust in clustering_results.dust_attacks[:5] %}
-                    <small class="d-block text-white">{{ dust.address[:16] }}... - Risk: {{
+                    <small class="d-block text-white">{{ dust.address }} - Risk: {{
                         "%.0f"|format(dust.risk_score * 100) }}%</small>
                     {% endfor %}
                 </div>
@@ -286,23 +296,24 @@
                         <thead>
                             <tr>
                                 <th>TX Hash</th>
-                                <th>Amount</th>
+                                <th>Amount ({{ currency }})</th>
                                 <th>Anomaly Score</th>
                                 <th>Reasons</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for anom in anomalies[:20] %}
-                            <tr class="{% if anom.is_suspicious %}table-danger{% endif %}">
-                                <td><small class="font-monospace text-warning">{{ anom.hash[:16] }}...</small></td>
-                                <td>{{ "%.4f"|format(anom.amount) }}</td>
+                        <tbody>
+                            {% for anom in anomalies %}
+                            <tr class="{% if anom['is_suspicious'] %}table-danger{% endif %}">
+                                <td><small class="font-monospace text-warning">{{ anom['hash'] }}</small></td>
+                                <td>{{ "%.4f"|format(anom['amount']) }}</td>
                                 <td>
                                     <span
-                                        class="badge {% if anom.anomaly_score > 0.8 %}bg-danger{% elif anom.anomaly_score > 0.5 %}bg-warning text-dark{% else %}bg-info{% endif %}">
-                                        {{ "%.2f"|format(anom.anomaly_score) }}
+                                        class="badge {% if anom['anomaly_score'] > 0.8 %}bg-danger{% elif anom['anomaly_score'] > 0.5 %}bg-warning text-dark{% else %}bg-info{% endif %}">
+                                        {{ "%.2f"|format(anom['anomaly_score']) }}
                                     </span>
                                 </td>
-                                <td><small class="text-light">{{ anom.anomaly_reason }}</small></td>
+                                <td><small class="text-light">{{ anom['reasons']|join(', ') }}</small></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -311,8 +322,44 @@
                 {% else %}
                 <div class="alert alert-info">
                     <p class="mb-0">✓ No anomalies detected. Transaction patterns are normal.</p>
-                    <small class="text-muted">ML anomaly detection requires sufficient data to establish baseline
-                        patterns.</small>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- TRANSACTIONS TAB (NEW) -->
+            <div class="tab-pane fade" id="transactions" role="tabpanel">
+                <h4 class="card-title text-light mb-4">📜 Transaction History</h4>
+
+                {% if recent_activity and recent_activity|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Hash</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Value ({{ currency }})</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in recent_activity %}
+                            <tr>
+                                <td>{{ tx.timestamp }}</td>
+                                <td><small class="font-monospace"><a href="{{ explorer_tx }}{{ tx.hash }}"
+                                            target="_blank" class="text-light text-decoration-none">{{ tx.hash
+                                            }}</a></small></td>
+                                <td><small class="font-monospace">{{ tx['from'] }}</small></td>
+                                <td><small class="font-monospace">{{ tx['to'] }}</small></td>
+                                <td>{{ "%.4f"|format(tx.value|float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <p class="mb-0">No transactions found.</p>
                 </div>
                 {% endif %}
             </div>
@@ -338,7 +385,7 @@
                         <thead class="bg-success bg-opacity-25">
                             <tr>
                                 <th>Address</th>
-                                <th class="text-end">Amount Sent (ETH)</th>
+                                <th class="text-end">Amount Sent ({{ currency }})</th>
                                 <th class="text-end">TX Count</th>
                             </tr>
                         </thead>
@@ -348,7 +395,7 @@
                             <tr>
                                 <td>
                                     <small class="text-info font-monospace">
-                                        {{ addr[:16] }}...{{ addr[-8:] }}
+                                        {{ addr }}
                                     </small>
                                 </td>
                                 <td class="text-end text-success">{{ "%.4f"|format(amount) }}</td>
@@ -371,7 +418,7 @@
                         <thead class="bg-danger bg-opacity-25">
                             <tr>
                                 <th>Address</th>
-                                <th class="text-end">Amount Received (ETH)</th>
+                                <th class="text-end">Amount Received ({{ currency }})</th>
                                 <th class="text-end">TX Count</th>
                             </tr>
                         </thead>
@@ -381,7 +428,7 @@
                             <tr>
                                 <td>
                                     <small class="text-warning font-monospace">
-                                        {{ addr[:16] }}...{{ addr[-8:] }}
+                                        {{ addr }}
                                     </small>
                                 </td>
                                 <td class="text-end text-danger">{{ "%.4f"|format(amount) }}</td>
@@ -403,7 +450,7 @@
                     <div style="font-family: monospace; line-height: 2; font-size: 0.9rem;">
                         <div class="mb-3">
                             <span class="badge bg-success">VICTIMS (SOURCES)</span>
-                            <span style="color: #aaa;">↓ Send ETH ↓</span>
+                            <span style="color: #aaa;">↓ Send {{ currency }} ↓</span>
                         </div>
                         <div
                             style="background: #252525; padding: 15px; border-radius: 5px; margin-bottom: 15px; border-left: 3px solid #0d6efd;">
@@ -419,8 +466,8 @@
                         {% for addr, amount in summary.top_suspects[:3] %}
                         <div
                             style="background: #2d2d2d; padding: 10px; margin-bottom: 10px; border-radius: 3px; border-left: 3px solid #dc3545;">
-                            <small style="color: #dc3545;">{{ addr[:20] }}...</small>
-                            <small style="color: #888;">{{ "%.4f"|format(amount) }} ETH</small>
+                            <small style="color: #dc3545;">{{ addr }}</small>
+                            <small style="color: #888;">{{ "%.4f"|format(amount) }} {{ currency }}</small>
                         </div>
                         {% endfor %}
                         {% endif %}

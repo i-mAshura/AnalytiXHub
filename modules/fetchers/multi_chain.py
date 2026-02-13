@@ -51,7 +51,7 @@ class BlockScoutFetcher:
             if tx_response.status_code == 200:
                 tx_data = tx_response.json()
                 if 'items' in tx_data:
-                    for tx in tx_data['items'][:50]:
+                    for tx in tx_data['items']: # Process all returned items
                         transactions.append({
                             'hash': tx.get('hash'),
                             'from': tx.get('from', {}).get('hash') if isinstance(tx.get('from'), dict) else tx.get('from'),
@@ -92,7 +92,7 @@ class EtherscanMultiChainFetcher:
     
     @staticmethod
     def fetch_transactions(chain: str, address: str, include_internal: bool = True, 
-                          include_token: bool = True) -> Tuple[List[Dict], Dict]:
+                          include_token_transfers: bool = True) -> Tuple[List[Dict], Dict]:
         
         chain = chain.lower()
         if chain not in EtherscanMultiChainFetcher.CHAIN_CONFIGS:
@@ -123,7 +123,7 @@ class EtherscanMultiChainFetcher:
                 counts['internal'] = len(internal_txs)
             
             # Token transfers
-            if include_token:
+            if include_token_transfers:
                 token_txs = EtherscanMultiChainFetcher._fetch_page(chain, address, 'tokentx')
                 transactions.extend(token_txs)
                 counts['token'] = len(token_txs)
@@ -138,7 +138,7 @@ class EtherscanMultiChainFetcher:
             return BlockScoutFetcher.fetch_transactions(chain, address)
     
     @staticmethod
-    def _fetch_page(chain: str, address: str, action: str, page: int = 1, offset: int = 50) -> List[Dict]:
+    def _fetch_page(chain: str, address: str, action: str, page: int = 1, offset: int = 5000) -> List[Dict]:
         config = EtherscanMultiChainFetcher.CHAIN_CONFIGS[chain]
         params = {
             'chainid': config['chainid'],
@@ -165,6 +165,14 @@ class EtherscanMultiChainFetcher:
                             tx['timestamp'] = datetime.fromtimestamp(int(tx['timeStamp'])).strftime('%Y-%m-%d %H:%M:%S')
                         except:
                             pass
+                    
+                    # Normalize Value (Wei -> ETH)
+                    if 'value' in tx:
+                        try:
+                            tx['value'] = float(tx['value']) / 1e18
+                        except:
+                            tx['value'] = 0.0
+                            
                     results.append(tx)
                 return results
             return []
@@ -242,58 +250,247 @@ class MempoolFetcher:
 
 
 # ==================== SOLANA (Solscan v2) ====================
-
 class SolanaFetcher:
-    """Fetch Solana transactions via Solscan API v2"""
+    """Fetch Solana transactions via Solscan Public API v2 (Official) or RPC Fallback"""
     
-    BASE_URL = "https://pro-api.solscan.io/v2.0" # Using Pro/Public v2 endpoint
+    # v2 Public API (User Provided Config)
+    BASE_URL = "https://pro-api.solscan.io/v2.0" 
+    RPC_URL = "https://api.mainnet-beta.solana.com"
     
     @staticmethod
     def fetch_transactions(address: str) -> Tuple[List[Dict], Dict]:
-        transactions = []
-        counts = {'normal': 0}
+        """
+        Fetch Solana transactions via Solscan API (Pro -> Public -> RPC).
+        """
+        print(f"[Solscan] Fetching transactions for {address}...")
         
+        transactions = []
+        counts = {'normal': 0, 'token': 0}
+        
+        # 1. Try Solscan Pro/Public API first (richer data)
         headers = {
-            "token": SOLANA_API_KEY
+            "token": SOLANA_API_KEY, 
+            "accept": "application/json",
+            "User-Agent": "Mozilla/5.0"
         }
         
+        # If key looks like JWT, use Bearer
+        if len(SOLANA_API_KEY) > 50:
+             headers = {
+                "Authorization": f"Bearer {SOLANA_API_KEY}",
+                "accept": "application/json",
+                "User-Agent": "Mozilla/5.0"
+            }
+        
         try:
-            print(f"[+] Fetching Solana data from Solscan for {address[:8]}...")
+            # Try Pro API
+            url = f"https://pro-api.solscan.io/v2.0/account/transactions?address={address}&limit=100"
+            resp = requests.get(url, headers=headers, timeout=15)
             
-            # Use account/transactions endpoint
-            url = f"{SolanaFetcher.BASE_URL}/account/transfer"
-            params = {'address': address, 'limit': 40}
-            
-            response = requests.get(url, headers=headers, params=params, timeout=15)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('success') and data.get('data'):
-                    for tx in data['data']:
-                        # Parse Solscan transfer data
-                        amount = float(tx.get('amount', 0)) / (10 ** tx.get('decimals', 9))
+            # If authorized failed, try Public API
+            if resp.status_code in [401, 403]:
+                print(f"⚠️  Solscan {resp.status_code}. Trying Public API fallback...")
+                public_headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                    "Accept": "application/json",
+                    "Referer": "https://solscan.io/"
+                }
+                # Try Solscan Public API V2
+                url = f"https://api.solscan.io/account/transactions?address={address}&limit=50"
+                resp = requests.get(url, headers=public_headers, timeout=15)
+
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get('data', [])
+                # Handle V1 list response or V2 data wrapper
+                if isinstance(data, list): items = data
+                
+                if isinstance(items, list):
+                    if len(items) > 0:
+                        print(f"[DEBUG SOLANA] First raw item: {items[0]}")
+                    for item in items:
+                        tx_hash = item.get('tx_hash') or item.get('encId') or item.get('txHash')
+                        block_time = item.get('block_time', item.get('blockTime', 0))
+                        
+                        val = 0.0
+                        flow = 'unknown'
+                        
+                        # Try to detect SOL balance change
+                        # Support both V1 (sol_bal_change) and V2 (changeAmount, amount) fields
+                        if 'changeAmount' in item:
+                             val = abs(float(item['changeAmount'])) / 1e9 # Usually lamports
+                        elif 'parsedInstruction' in item:
+                             # Try to find amount in parsed instruction
+                             try:
+                                 params = item.get('parsedInstruction', {}).get('params', {})
+                                 if 'amount' in params:
+                                     val = float(params['amount']) / 1e9
+                                 elif 'uiAmount' in params: # Sometimes pre-normalized
+                                     val = float(params['uiAmount'])
+                             except:
+                                 pass
+                        elif 'sol_bal_change' in item:
+                            change = float(item['sol_bal_change']) / 1e9
+                            if change > 0:
+                                val = change
+                                flow = 'in'
+                            else:
+                                val = abs(change)
+                                flow = 'out'
+                        elif 'lamport' in item:
+                             val = float(item['lamport']) / 1e9
                         
                         transactions.append({
-                            'hash': tx.get('trans_id'),
-                            'timestamp': datetime.fromtimestamp(tx.get('block_time', time.time())).strftime('%Y-%m-%d %H:%M:%S'),
-                            'value': amount,
-                            'from': tx.get('source_owner'),
-                            'to': tx.get('dest_owner'),
+                            'hash': tx_hash,
+                            'timestamp': datetime.fromtimestamp(block_time).strftime('%Y-%m-%d %H:%M:%S'),
+                            'value': val,
+                            'from': address if flow == 'out' else 'Interaction', 
+                            'to': address if flow == 'in' else 'Contract', 
                             'chain': 'solana',
-                            'token': tx.get('token_address', 'SOL')
+                            'type': 'sol'
                         })
                     
                     counts['normal'] = len(transactions)
-                    print(f"✅ Solana (Solscan): {counts['normal']} transactions")
-                else:
-                    print(f"⚠️ Solscan returned no success: {data}")
-            else:
-                print(f"❌ Solscan API error: {response.status_code} - {response.text}")
-                
-            return transactions, counts
+                    print(f"✅ Solscan: {len(transactions)} transactions found")
+                    return transactions, counts
+            
+            print(f"⚠️ Solscan API unavailable ({resp.status_code}). Falling back to RPC...")
             
         except Exception as e:
-            print(f"❌ Solana fetch error: {e}")
+            print(f"⚠️ Solscan API Error: {e}. Falling back to RPC...")
+
+        # 2. RPC Fallback (Guaranteed to work for connectivity)
+        return SolanaFetcher._fetch_rpc_signatures(address)
+
+    @staticmethod
+    def _fetch_rpc_signatures(address: str, limit: int = 1000) -> Tuple[List[Dict], Dict]:
+        """Fallback: Fetch signatures from Solana RPC"""
+        headers = {"Content-Type": "application/json"}
+        transactions = [] # Initialize transactions list for this fallback method
+        counts = {'normal': 0, 'token': 0}
+
+        # Fallback to RPC if Solscan fails or returns empty
+        print("⚠️ Solscan failed/empty. Falling back to Solana RPC...")
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getSignaturesForAddress",
+            "params": [
+                address,
+                {"limit": 20} # Limit to 20 to avoid rate limits on details fetch
+            ]
+        }
+        
+        try:
+            resp = requests.post("https://api.mainnet-beta.solana.com", json=payload, headers=headers, timeout=15)
+            data = resp.json()
+            
+            if 'result' in data:
+                signatures_raw = data['result']
+                
+                # 1. Populate basic info first (Guaranteed to return something)
+                tx_map = {}
+                for item in signatures_raw:
+                    sig = item.get('signature')
+                    ts = item.get('blockTime', 0)
+                    tx_obj = {
+                        'hash': sig,
+                        'timestamp': datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S') if ts else 'Unknown',
+                        'value': 0.0, # Default to 0
+                        'from': 'Solana Address', 
+                        'to': 'Interaction', 
+                        'chain': 'solana',
+                        'type': 'sol'
+                    }
+                    transactions.append(tx_obj)
+                    tx_map[sig] = tx_obj
+
+                # 2. Try to enrich with details (Best Effort)
+                try:
+                    sigs_to_fetch = [x['signature'] for x in signatures_raw][:10] # Increase to 10
+                    
+                    if sigs_to_fetch:
+                        print(f"[+] Fetching details for {len(sigs_to_fetch)} txs (Sequential with Retry)...")
+                        
+                        import time
+                        for idx, sig in enumerate(sigs_to_fetch):
+                            # Sequential fetch with Retry Logic
+                            max_retries = 5 # Increased from 3
+                            for attempt in range(max_retries):
+                                try:
+                                    payload = {
+                                        "jsonrpc": "2.0",
+                                        "id": 1,
+                                        "method": "getTransaction",
+                                        "params": [
+                                            sig,
+                                            {"encoding": "json", "maxSupportedTransactionVersion": 0}
+                                        ]
+                                    }
+                                    
+                                    # Increased timeout to 10s
+                                    resp = requests.post("https://api.mainnet-beta.solana.com", json=payload, headers=headers, timeout=10)
+                                    
+                                    if resp.status_code == 429:
+                                        wait_time = (attempt + 1) * 2 + 1 # 3s, 5s, 7s...
+                                        print(f"⚠️ Rate limited (429) for {sig[:8]}... attempt {attempt+1}/{max_retries}, waiting {wait_time}s...")
+                                        time.sleep(wait_time)
+                                        continue
+                                        
+                                    item = resp.json()
+                                    
+                                    if 'result' in item and item['result']:
+                                        tx_res = item['result']
+                                        meta = tx_res.get('meta', {})
+                                        
+                                        # 1. Parse Account Keys (Addresses)
+                                        keys = []
+                                        tx_data = tx_res.get('transaction', {})
+                                        if 'message' in tx_data:
+                                            msg = tx_data['message']
+                                            if 'accountKeys' in msg:
+                                                raw_keys = msg['accountKeys']
+                                                if len(raw_keys) > 0:
+                                                    if isinstance(raw_keys[0], str):
+                                                        keys = raw_keys
+                                                    elif isinstance(raw_keys[0], dict):
+                                                        keys = [k.get('pubkey') for k in raw_keys]
+                                        
+                                        sender = keys[0] if len(keys) > 0 else "Unknown"
+                                        receiver = keys[1] if len(keys) > 1 else "Interaction"
+                                        
+                                        # 3. Calculate Value
+                                        pre_bal = meta.get('preBalances', [0])[0]
+                                        post_bal = meta.get('postBalances', [0])[0]
+                                        val = abs(pre_bal - post_bal) / 1e9
+                                        
+                                        if sig in tx_map:
+                                            tx_map[sig]['value'] = val
+                                            tx_map[sig]['from'] = sender
+                                            tx_map[sig]['to'] = receiver
+                                    
+                                    # Failures in 'result' (e.g. null) should not retry if it's 200 OK
+                                    break
+                                    
+                                except Exception as sub_e:
+                                    # Network error, wait and retry
+                                    print(f"⚠️ Failed to fetch detail for {sig}: {sub_e}")
+                                    time.sleep(2)
+                            
+                            # Increased base delay to 1.0s to be very safe
+                            time.sleep(1.0)
+
+                except Exception as e:
+                    print(f"⚠️ Solana Sequential RPC failed: {e}")
+
+                print(f"✅ Solana RPC: {len(transactions)} transactions found")
+                counts['normal'] = len(transactions)
+                return transactions, counts
+            else:
+                print(f"❌ Solana RPC Error: {data.get('error', {})}")
+                return [], counts
+        except Exception as e:
+            print(f"❌ Solana RPC Exception: {e}")
             return [], counts
 
 
@@ -318,7 +515,7 @@ class TronFetcher:
             
             # TronGrid /v1/accounts/{address}/transactions
             url = f"{TronFetcher.BASE_URL}/v1/accounts/{address}/transactions"
-            params = {'limit': 50}
+            params = {'limit': 200}
             
             response = requests.get(url, headers=headers, params=params, timeout=15)
             
@@ -370,7 +567,7 @@ class XRPLFetcher:
     ]
     
     @staticmethod
-    def fetch_transactions(address: str, limit: int = 50) -> Tuple[List[Dict], Dict]:
+    def fetch_transactions(address: str, limit: int = 200) -> Tuple[List[Dict], Dict]:
         transactions = []
         counts = {'normal': 0}
         

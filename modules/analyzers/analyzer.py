@@ -245,7 +245,15 @@ def analyze_live_eth(txlist, root_address, start_date=None, end_date=None, chain
 
     for tx in txlist:
         try:
-            ts = float(tx.get("timeStamp", 0))
+            # Handle both timeStamp (Etherscan case) and timestamp (snake_case)
+            raw_ts = tx.get("timeStamp") or tx.get("timestamp") or 0
+            
+            # Handle ISO Format String
+            if isinstance(raw_ts, str) and "-" in raw_ts and ":" in raw_ts:
+                dt = datetime.strptime(raw_ts, '%Y-%m-%d %H:%M:%S')
+                ts = dt.timestamp()
+            else:
+                ts = float(raw_ts)
         except:
             ts = 0.0
             
@@ -257,15 +265,34 @@ def analyze_live_eth(txlist, root_address, start_date=None, end_date=None, chain
         frm = tx.get("from")
         to = tx.get("to")
         
-        try:
-            val = float(tx.get("value", 0)) / 1e18
-        except:
+        raw_val = tx.get("value", 0)
+        
+        # Robust Normalization Logic
+        if isinstance(raw_val, (int, float)):
+            # If it's a small number (reasonable for ETH/BTC), assume it's normalized
+            # Threshold: 1,000,000,000 (1 Billion units is unlikely for un-normalized Wei)
+            if raw_val < 1e14: 
+                val = float(raw_val)
+            else:
+                # Huge number -> likely Wei
+                val = float(raw_val) / 1e18
+        elif isinstance(raw_val, str):
+            try:
+                # check if string is a float representation
+                v = float(raw_val)
+                if v < 1e14:
+                    val = v
+                else:
+                    val = v / 1e18
+            except:
+                val = 0.0
+        else:
             val = 0.0
         
         transaction_values.append(val)
         
-        frm_label = KNOWN_ENTITIES.get(frm, frm[:10] + "...")
-        to_label = KNOWN_ENTITIES.get(to, to[:10] + "...")
+        frm_label = KNOWN_ENTITIES.get(frm, frm)
+        to_label = KNOWN_ENTITIES.get(to, to)
 
         G.add_edge(frm, to, value=val, label=f"{val:.2f} ETH")
 
@@ -339,7 +366,7 @@ def analyze_live_eth(txlist, root_address, start_date=None, end_date=None, chain
 
 def analyze_multiple_addresses(addresses, api_key, start_date=None, end_date=None):
     """Track funds across multiple addresses"""
-    from eth_live import fetch_eth_address
+    from modules.fetchers.eth_live import fetch_eth_address
     
     combined_summary = {
         "addresses": {},

@@ -1,5 +1,5 @@
 from typing import List, Dict, Set, Optional
-from breadcrumbs_client import BreadcrumbsClient
+from modules.fetchers.breadcrumbs_client import BreadcrumbsClient
 import concurrent.futures
 import os
 

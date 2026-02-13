@@ -46,7 +46,7 @@ def create_address_distribution_chart(summary):
         # Top victims (inbound)
         top_victims = summary.get('top_victims', [])
         if top_victims:
-            addrs = [addr[:12] + "..." for addr, _ in top_victims[:5]]
+            addrs = [addr for addr, _ in top_victims[:5]]
             values = [val for _, val in top_victims[:5]]
             ax1.barh(addrs, values, color='#3498db')
             ax1.set_xlabel('ETH Received')
@@ -55,7 +55,7 @@ def create_address_distribution_chart(summary):
         # Top suspects (outbound)
         top_suspects = summary.get('top_suspects', [])
         if top_suspects:
-            addrs = [addr[:12] + "..." for addr, _ in top_suspects[:5]]
+            addrs = [addr for addr, _ in top_suspects[:5]]
             values = [val for _, val in top_suspects[:5]]
             ax2.barh(addrs, values, color='#e74c3c')
             ax2.set_xlabel('ETH Sent')
@@ -217,12 +217,12 @@ def create_pdf(summary, findings, narrative, source):
     
     top_victims = summary.get('top_victims', [])
     if top_victims:
-        victim_data = [["Address (First 16 Chars)", "Amount (ETH)", "Status"]]
+        victim_data = [["Address", "Amount (ETH)", "Status"]]
         for addr, val in top_victims[:10]:
             status = "🚨 Large Transfer" if val > summary.get('avg_transaction_value', 0) * 5 else "Normal"
-            victim_data.append([addr[:16] + "...", f"{val:.4f}", status])
+            victim_data.append([addr, f"{val:.4f}", status])
         
-        victim_table = Table(victim_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch])
+        victim_table = Table(victim_data, colWidths=[4.5*inch, 1.25*inch, 1.25*inch])
         victim_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3498db')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -242,12 +242,12 @@ def create_pdf(summary, findings, narrative, source):
     
     top_suspects = summary.get('top_suspects', [])
     if top_suspects:
-        suspect_data = [["Address (First 16 Chars)", "Amount (ETH)", "Status"]]
+        suspect_data = [["Address", "Amount (ETH)", "Status"]]
         for addr, val in top_suspects[:10]:
             status = "⚠️ Large Transfer" if val > summary.get('avg_transaction_value', 0) * 5 else "Normal"
-            suspect_data.append([addr[:16] + "...", f"{val:.4f}", status])
+            suspect_data.append([addr, f"{val:.4f}", status])
         
-        suspect_table = Table(suspect_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch])
+        suspect_table = Table(suspect_data, colWidths=[4.5*inch, 1.25*inch, 1.25*inch])
         suspect_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e74c3c')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -280,7 +280,7 @@ def create_pdf(summary, findings, narrative, source):
         narrative_text = narrative.get('narrative', '')
         # Check for error markers and use fallback if found
         if not narrative_text or "[Analysis failed" in narrative_text:
-            from gemini import generate_fallback_narrative
+            from modules.ai.gemini import generate_fallback_narrative
             narrative_text = generate_fallback_narrative(summary)
         
         if narrative_text:
@@ -296,7 +296,7 @@ def create_pdf(summary, findings, narrative, source):
     else:
         # Handle string format or error cases
         if not narrative or "[Analysis failed" in str(narrative):
-            from gemini import generate_fallback_narrative
+            from modules.ai.gemini import generate_fallback_narrative
             narrative = generate_fallback_narrative(summary)
         clean_text = str(narrative).replace("**", "").replace("#", "")
         story.append(Paragraph(clean_text, styles['Normal']))

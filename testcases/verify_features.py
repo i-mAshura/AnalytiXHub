@@ -61,8 +61,20 @@ def test_breadcrumbs():
     # Using a known address
     data = client.get_graph_data("0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", chain_id=1)
     print(f"Graph Elements: {len(data)}")
-    if len(data) > 0: print("✅ Breadcrumbs Success")
-    else: print("❌ Breadcrumbs Failed")
+    if len(data) > 0: print("✅ Breadcrumbs (ETH) Success")
+    else: print("❌ Breadcrumbs (ETH) Failed")
+
+    # Testing Solana via Breadcrumbs (Should use Solscan)
+    print("\n--- Testing Breadcrumbs Client (SOLANA Force) ---")
+    # Solana Donation Address (Ukraine)
+    sol_addr = "667m6yAxnBPHYvwCft4fDeR8ZIRs3w2s5wH2Y9y9tXh" 
+    data_sol = client.get_graph_data(sol_addr, chain_id='solana')
+    print(f"Graph Elements (SOL): {len(data_sol)}")
+    # Root node is always 1. If fetch works, we should have edges/other nodes.
+    if len(data_sol) > 1: 
+        print(f"✅ Breadcrumbs (SOL) Success (Likely used Solscan). Found {len(data_sol)} elements.")
+    else: 
+        print("❌ Breadcrumbs (SOL) Failed (Only root node found or empty)")
 
 if __name__ == "__main__":
     try:

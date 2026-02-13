@@ -7,7 +7,10 @@ import csv
 import json
 import os
 from datetime import datetime
-from analyzer import analyze_live_eth
+from modules.analyzers.analyzer import analyze_live_eth
+from modules.reports.report import create_pdf
+from modules.fetchers.eth_live import fetch_eth_address_with_counts
+from modules.ai.gemini import generate_comprehensive_analysis
 import pandas as pd
 
 class BatchAnalyzer:

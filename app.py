@@ -6,64 +6,65 @@ import json
 from datetime import datetime, timedelta
 
 # Custom Modules
-from analyzer import analyze_csv, analyze_live_eth, analyze_multiple_addresses
+from modules.analyzers.analyzer import analyze_csv, analyze_live_eth, analyze_multiple_addresses
 import re
-from eth_live import fetch_eth_address, fetch_eth_address_with_counts, fetch_transaction_details
-from report import create_pdf
-from gemini import generate_comprehensive_analysis, generate_narrative
-from case_manager import Case, CaseManager
-from visualizations import create_timeline_visualization, create_sankey_diagram, create_heatmap_visualization
-from legal_report import LegalReportGenerator
-from batch_analyzer import BatchAnalyzer
+from modules.fetchers.eth_live import fetch_eth_address, fetch_eth_address_with_counts, fetch_transaction_details
+from modules.reports.report import create_pdf
+from modules.ai.gemini import generate_comprehensive_analysis, generate_narrative
+from modules.core.case_manager import Case, CaseManager
+from modules.utils.visualizations import create_timeline_visualization, create_sankey_diagram, create_heatmap_visualization
+from modules.reports.legal_report import LegalReportGenerator
+from modules.analyzers.batch_analyzer import BatchAnalyzer
 
-from breadcrumbs_client import BreadcrumbsClient
-from pathfinder import PathFinder
-from monitoring import MonitoringSystem
-from ml_engine import ml_engine
+# Breadcrumbs removed as requested
+# from modules.fetchers.breadcrumbs_client import BreadcrumbsClient 
+from modules.utils.pathfinder import PathFinder
+from modules.utils.monitoring import MonitoringSystem
+from modules.analyzers.ml_engine import ml_engine
 
 monitoring_system = MonitoringSystem()
 case_manager = CaseManager()
 
 try:
-    from advanced_analysis import AddressClustering, ThreatIntelligence, AnomalyDetector
+    from modules.analyzers.advanced_analysis import AddressClustering, ThreatIntelligence, AnomalyDetector
     ADVANCED_FEATURES_AVAILABLE = True
 except:
     ADVANCED_FEATURES_AVAILABLE = False
 
 # NEW FEATURES (v4.0) - Taint Analysis, Smart Contracts, DeFi, Real-time Monitor, Threat Intel
 try:
-    from taint_analysis import TaintAnalyzer
+    from modules.analyzers.taint_analysis import TaintAnalyzer
     TAINT_ANALYSIS_AVAILABLE = True
 except ImportError:
     TAINT_ANALYSIS_AVAILABLE = False
 
 try:
-    from smart_contract_analyzer import SmartContractAnalyzer
+    from modules.analyzers.smart_contract_analyzer import SmartContractAnalyzer
     SMART_CONTRACT_AVAILABLE = True
 except ImportError:
     SMART_CONTRACT_AVAILABLE = False
 
 try:
-    from defi_analyzer import DeFiAnalyzer
+    from modules.analyzers.defi_analyzer import DeFiAnalyzer
     DEFI_ANALYZER_AVAILABLE = True
 except ImportError:
     DEFI_ANALYZER_AVAILABLE = False
 
 try:
-    from real_time_monitor import RealTimeMonitor
+    from modules.analyzers.real_time_monitor import RealTimeMonitor
     REALTIME_MONITOR_AVAILABLE = True
 except ImportError:
     REALTIME_MONITOR_AVAILABLE = False
 
 try:
-    from threat_intelligence import ThreatIntelligenceAPI, BlockchainIntelligence
+    from modules.analyzers.threat_intelligence import ThreatIntelligenceAPI, BlockchainIntelligence
     THREAT_INTEL_V2_AVAILABLE = True
 except ImportError:
     THREAT_INTEL_V2_AVAILABLE = False
 
 # Database Integration
 try:
-    from db_models import (
+    from modules.core.db_models import (
         SessionLocal, Base, engine, Case as DBCase, Address, Transaction, 
         SmartContract, DeFiActivity, TaintTrace, MonitoringJob, ThreatIntel, 
         AnomalyDetection, AddressCluster
@@ -113,7 +114,7 @@ def index():
                          recent_activity=recent_activity)
 
 import re
-from eth_live import fetch_eth_address, fetch_eth_address_with_counts, fetch_transaction_details
+from modules.fetchers.eth_live import fetch_eth_address, fetch_eth_address_with_counts, fetch_transaction_details
 
 # ... (existing imports)
 
@@ -123,7 +124,7 @@ def investigation():
     global current_case
     summary = None
     # Import chain IDs from eth_live module
-    from eth_live import SUPPORTED_CHAINS
+    from modules.fetchers.eth_live import SUPPORTED_CHAINS
     supported_chains = SUPPORTED_CHAINS
     
     if request.method == "POST":
@@ -177,14 +178,52 @@ def investigation():
         current_case["chain_id"] = chain_id
         current_case["address"] = address
         
-        if address and ETHERSCAN_KEY:
+        # Determine Currency Symbol
+        currency_map = {
+            'ethereum': 'ETH', 'eth': 'ETH', 'sepolia': 'ETH', 'base': 'ETH', 'linea': 'ETH',
+            'bitcoin': 'BTC', 'btc': 'BTC',
+            'solana': 'SOL', 'sol': 'SOL',
+            'tron': 'TRX', 'trx': 'TRX',
+            'xrp': 'XRP', 'ripple': 'XRP',
+            'bsc': 'BNB', 'binance': 'BNB',
+            'polygon': 'MATIC', 'matic': 'MATIC',
+            'optimism': 'OP', 'op': 'OP',
+            'arbitrum': 'ARB', 'arb': 'ARB',
+            'avalanche': 'AVAX',
+            'fantom': 'FTM',
+            'cronos': 'CRO',
+            'moonbeam': 'GLMR',
+            'gnosis': 'GNO',
+            'celo': 'CELO',
+            'blast': 'BLAST'
+        }
+        current_case["currency"] = currency_map.get(chain_name.lower(), 'UNIT')
+        
+        # Determine Explorer URL Pattern
+        explorer_map = {
+            'ethereum': 'https://etherscan.io/tx/',
+            'bitcoin': 'https://mempool.space/tx/',
+            'solana': 'https://solscan.io/tx/',
+            'tron': 'https://tronscan.org/#/transaction/',
+            'bsc': 'https://bscscan.com/tx/',
+            'polygon': 'https://polygonscan.com/tx/',
+            'optimism': 'https://optimistic.etherscan.io/tx/',
+            'arbitrum': 'https://arbiscan.io/tx/',
+            'avalanche': 'https://snowtrace.io/tx/',
+            'fantom': 'https://ftmscan.com/tx/',
+            'sepolia': 'https://sepolia.etherscan.io/tx/'
+        }
+        current_case["explorer_tx"] = explorer_map.get(chain_name.lower(), 'https://etherscan.io/tx/')
+        
+        if address:
             try:
                 print(f"[+] Trace initiated: {address} on {chain_name} (Chain ID: {chain_id}) | {start_date} to {end_date}")
                 
-                # Unified API call with chain_id parameter
-                txs, counts = fetch_eth_address_with_counts(
-                    address, ETHERSCAN_KEY,
-                    chain_id=chain_id,
+                # Unified Multi-Chain API Call (Supports EVM, Solana, Bitcoin, Tron)
+                from modules.fetchers.multi_chain import MultiChainFetcher
+                txs, counts = MultiChainFetcher.fetch_by_chain(
+                    chain_name, 
+                    address,
                     include_internal=include_internal,
                     include_token_transfers=include_token_transfers
                 )
@@ -199,6 +238,7 @@ def investigation():
                 )
                 
                 current_case["summary"] = summary
+                current_case["transactions"] = txs  # <--- CRITICAL FIX
                 current_case["source"] = source
                 current_case["counts"] = counts
                 current_case["fetch_options"] = {
@@ -254,10 +294,11 @@ def investigation():
                         print(f"[!] Anomaly detection error: {e}")
                 
                 # 4. TAINT ANALYSIS (#4) - NEW
+
                 if TAINT_ANALYSIS_AVAILABLE and txs:
                     try:
-                        taint = TaintAnalyzer()
-                        taint_results = taint.trace_fund_flow(address, txs)
+                        taint = TaintAnalyzer(txs)
+                        taint_results = taint.trace_fund_flow(address)
                         current_case["taint_results"] = taint_results
                         print(f"[+] Taint Analysis: Fund flow traced through {len(taint_results.get('path', []))} addresses")
                     except Exception as e:
@@ -387,6 +428,11 @@ def investigation():
                 print(f"[ERROR] {e}")
                 flash(f"Error: {str(e)}", "error")
 
+                # print(f"[DEBUG] Validation - Transactions in current_case: {len(current_case.get('transactions', []))}")
+                # print(f"[DEBUG] Validation - Summary Total: {summary.get('total_transactions')}")
+                # if len(current_case.get('transactions', [])) > 0:
+                #    print(f"[DEBUG] Sample Transaction: {current_case['transactions'][0]}")
+
     return render_template("investigation.html", 
                          active_page="investigation",
                          summary=summary, 
@@ -400,9 +446,12 @@ def investigation():
                          threat_intel=current_case.get('threat_intel_results', {}),
                          anomalies=current_case.get('anomalies', []),
                          patterns=current_case.get('patterns', []),
+                         recent_activity=current_case.get('transactions', []),
                          taint_results=current_case.get('taint_results', {}),
                          contract_results=current_case.get('contract_results', {}),
-                         defi_results=current_case.get('defi_results', {}))
+                         defi_results=current_case.get('defi_results', {}),
+                         currency=current_case.get('currency', 'UNIT'),
+                         explorer_tx=current_case.get('explorer_tx', 'https://etherscan.io/tx/'))
 
 @app.route("/report", methods=["POST"])
 def report():
@@ -711,7 +760,7 @@ def seed_wannacry():
 @app.route("/batch", methods=["GET", "POST"])
 def batch_processing():
     """Batch analyze multiple addresses"""
-    from eth_live import SUPPORTED_CHAINS
+    from modules.fetchers.eth_live import SUPPORTED_CHAINS
     results = {}
     batch_status = None
     
@@ -848,7 +897,7 @@ def tracing():
 @app.route("/api/trace/<address>")
 def api_trace(address):
     """Get graph data for Cytoscape"""
-    from breadcrumbs_client import BreadcrumbsClient
+    from modules.fetchers.breadcrumbs_client import BreadcrumbsClient
     from pathfinder import PathFinder
     
     # Get chain_id from query (default to 1 'Ethereum')

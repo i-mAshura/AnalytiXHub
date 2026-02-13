@@ -28,10 +28,10 @@ def create_timeline_visualization(txlist, root_address, output_file="exports/tim
             # Determine event type
             if to.lower() == root_address.lower():
                 event_type = "INBOUND"
-                title = f"Received {val:.2f} ETH from {frm[:10]}..."
+                title = f"Received {val:.2f} ETH from {frm}"
             elif frm.lower() == root_address.lower():
                 event_type = "OUTBOUND"
-                title = f"Sent {val:.2f} ETH to {to[:10]}..."
+                title = f"Sent {val:.2f} ETH to {to}"
             else:
                 continue
                 
@@ -82,7 +82,7 @@ def create_timeline_visualization(txlist, root_address, output_file="exports/tim
         ))
     
     fig.update_layout(
-        title=f"Transaction Timeline for {root_address[:10]}...",
+        title=f"Transaction Timeline for {root_address}",
         xaxis_title="Date & Time",
         yaxis_title="Amount (ETH)",
         hovermode='x unified',
@@ -144,7 +144,7 @@ def create_sankey_diagram(summary, root_address, output_file="exports/sankey.htm
             pad=15,
             thickness=20,
             line=dict(color="black", width=0.5),
-            label=[addr[:10] + "..." for addr in nodes],
+            label=[addr for addr in nodes],
             color=node_colors
         ),
         link=dict(
@@ -156,7 +156,7 @@ def create_sankey_diagram(summary, root_address, output_file="exports/sankey.htm
     )])
     
     fig.update_layout(
-        title=f"Fund Flow Sankey Diagram - {root_address[:10]}...",
+        title=f"Fund Flow Sankey Diagram - {root_address}",
         font=dict(size=10),
         height=600,
         template='plotly_white'
@@ -193,7 +193,7 @@ def create_heatmap_visualization(txlist, root_address, output_file="exports/heat
     
     ax.set_xlabel('Hour of Day')
     ax.set_ylabel('Day of Week')
-    ax.set_title(f'Transaction Activity Heatmap - {root_address[:10]}...')
+    ax.set_title(f'Transaction Activity Heatmap - {root_address}')
     
     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     ax.set_yticks(range(7))

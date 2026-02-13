@@ -531,7 +531,26 @@
     function clearGraph() { cy.elements().remove(); updateStats(); }
 
     function viewEtherscan() {
-        if (selectedNode) window.open(`https://etherscan.io/address/${selectedNode.data('full_address')}`, '_blank');
+        if (!selectedNode) return;
+
+        const chain = document.getElementById('chainSelect').value;
+        const address = selectedNode.data('full_address');
+
+        let url = `https://etherscan.io/address/${address}`; // Default
+
+        if (chain === 'solana') {
+            url = `https://solscan.io/account/${address}`;
+        } else if (chain === 'bitcoin') {
+            url = `https://www.blockchain.com/explorer/addresses/btc/${address}`;
+        } else if (chain === 'tron') {
+            url = `https://tronscan.org/#/address/${address}`;
+        } else if (chain === '56') {
+            url = `https://bscscan.com/address/${address}`;
+        } else if (chain === '137') {
+            url = `https://polygonscan.com/address/${address}`;
+        }
+
+        window.open(url, '_blank');
     }
 
     function flagAddress() {

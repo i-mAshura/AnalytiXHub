@@ -65,7 +65,7 @@ class LegalReportGenerator:
             ["Department:", self.department],
             ["Digital Evidence Type:", "Ethereum Blockchain Transaction Analysis"],
             ["Investigation Date:", self.timestamp.strftime("%d-%m-%Y")],
-            ["Target Address:", root_address[:20] + "..."],
+            ["Target Address:", root_address],
         ]
         
         case_table = Table(case_data, colWidths=[2*inch, 4*inch])
@@ -126,7 +126,7 @@ class LegalReportGenerator:
         
         # If narrative still contains error markers, use fallback
         if not narrative or "[Analysis failed" in narrative:
-            from gemini import generate_fallback_narrative
+            from modules.ai.gemini import generate_fallback_narrative
             narrative = generate_fallback_narrative(summary)
             
         story.append(Paragraph("GENERATED NARRATIVE ANALYSIS:", styles['Heading3']))
@@ -182,8 +182,8 @@ class LegalReportGenerator:
         if victims:
             victim_data = [["Address", "Amount (ETH)", "Transaction Count"]]
             for addr, amount in victims:
-                victim_data.append([addr[:16] + "...", f"{amount:.4f}", ""])
-            victim_table = Table(victim_data, colWidths=[2.5*inch, 2*inch, 1.5*inch])
+                victim_data.append([addr, f"{amount:.4f}", ""])
+            victim_table = Table(victim_data, colWidths=[4.0*inch, 1.75*inch, 1.25*inch])
             victim_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#90EE90')),
                 ('GRID', (0, 0), (-1, -1), 1, colors.grey),
@@ -200,8 +200,8 @@ class LegalReportGenerator:
         if suspects:
             suspect_data = [["Address", "Amount (ETH)", "Transaction Count"]]
             for addr, amount in suspects:
-                suspect_data.append([addr[:16] + "...", f"{amount:.4f}", ""])
-            suspect_table = Table(suspect_data, colWidths=[2.5*inch, 2*inch, 1.5*inch])
+                suspect_data.append([addr, f"{amount:.4f}", ""])
+            suspect_table = Table(suspect_data, colWidths=[4.0*inch, 1.75*inch, 1.25*inch])
             suspect_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFB6C6')),
                 ('GRID', (0, 0), (-1, -1), 1, colors.grey),
@@ -220,7 +220,7 @@ class LegalReportGenerator:
         
         custody_data = [
             ["Item", "Description", "Collected By", "Date"],
-            ["Primary Evidence", f"Ethereum Address {root_address[:10]}...", 
+            ["Primary Evidence", f"Ethereum Address {root_address}", 
             self.investigator_name, self.timestamp.strftime("%d-%m-%Y")],
             ["Data Source", "Etherscan API (Public Blockchain Data)", 
             self.investigator_name, self.timestamp.strftime("%d-%m-%Y")],

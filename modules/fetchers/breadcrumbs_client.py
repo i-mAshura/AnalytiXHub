@@ -3,7 +3,7 @@ import json
 import random
 import os
 print(f"DEBUG: Loading breadcrumbs_client.py. OS module: {os}")
-from multi_chain import MultiChainFetcher
+from .multi_chain import MultiChainFetcher
 
 class BreadcrumbsClient:
     """
@@ -60,7 +60,19 @@ class BreadcrumbsClient:
         nodes.add(address.lower())
 
         txs = []
-        if not breadcrumbs_key:
+        txs = []
+        
+        # FORCE SOLSCAN FOR SOLANA (User Requirement)
+        if bc_chain in ['sol', 'solana']:
+            print("Force-routing Solana to Solscan (MultiChainFetcher)...")
+            try:
+                txs, counts = MultiChainFetcher.fetch_by_chain('solana', address)
+            except Exception as e:
+                print(f"Error fetching from Solscan: {e}")
+                txs = []
+        
+        # For other chains, try Breadcrumbs API first if key exists
+        elif not breadcrumbs_key:
             print("No Breadcrumbs API Key found. Using MultiChainFetcher as fallback.")
             try:
                 txs, counts = MultiChainFetcher.fetch_by_chain(self._map_to_internal_chain(bc_chain), address)

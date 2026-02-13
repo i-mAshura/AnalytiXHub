@@ -61,9 +61,26 @@ class MLEngine:
         for i, pred in enumerate(predictions):
             if pred == -1:
                 tx = ids[i]
-                tx['anomaly_score'] = round(float(scores[i]), 4)
-                tx['anomaly_reason'] = "Statistical Outlier (Value/Timing)"
-                anomalies.append(tx)
+                # Standardize output for template
+                anom = {
+                    'hash': tx.get('hash', tx.get('txid', 'Unknown')),
+                    'amount': float(tx.get('value', 0)) / 10**18 if isinstance(tx.get('value'), str) and len(tx.get('value')) > 10 else float(tx.get('value', 0)), 
+                    'timestamp': tx.get('timestamp', tx.get('timeStamp', 0)), # Keep original
+                    'anomaly_score': round(float(scores[i]), 4),
+                    'reasons': ["Statistical Outlier (Value/Timing)"], 
+                    'is_suspicious': True,
+                    'address': tx.get('to', 'Unknown'), # Add address for threat_intel template
+                    'type': 'Anomaly', # For threat_intel.html
+                    'description': "Statistical Outlier detected in transaction value or timing." # For threat_intel.html
+                }
+                
+                # Check for timestamp format issue
+                ts_val = anom['timestamp']
+                # If it's a string date, don't try to int() it later if used
+                
+                anom['amount'] = float(tx.get('value', 0))
+                
+                anomalies.append(anom)
                 
         return anomalies
 
@@ -106,7 +123,7 @@ class MLEngine:
              patterns.append({
                 'type': 'Round Tripping / Cyclic Flow',
                 'severity': 'High',
-                'description': f"Funds moved back and forth with {len(common)} addresses (e.g., {list(common)[0][:8]}...)",
+                'description': f"Funds moved back and forth with {len(common)} addresses (e.g., {list(common)[0]})",
                 'entities': list(common)
             })
             
