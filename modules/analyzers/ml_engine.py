@@ -1,17 +1,29 @@
 import numpy as np
-from sklearn.ensemble import IsolationForest
+try:
+    from sklearn.ensemble import IsolationForest
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
 import pandas as pd
 from datetime import datetime
+import time
 
 class MLEngine:
     def __init__(self):
-        self.model = IsolationForest(contamination=0.05, random_state=42)
+        if SKLEARN_AVAILABLE:
+            self.model = IsolationForest(contamination=0.05, random_state=42)
+        else:
+            self.model = None
         
     def detect_anomalies(self, transactions):
         """
         Detect anomalies in a list of transaction dictionaries using Isolation Forest.
         Features: Value, Time Diff from prev tx.
         """
+        if not self.model:
+            return []
+
         if not transactions or len(transactions) < 5:
             return []
             
