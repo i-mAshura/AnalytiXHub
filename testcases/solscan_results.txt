@@ -1,0 +1,24 @@
+Testing Pro v2 with header Bearer: Status: 401
+    Failed (401)
+Testing Pro v2 with header Token Header: Status: 401
+    Failed (401)
+Testing Pro v2 with header No Auth: Status: 401
+    Failed (401)
+Testing Public v2 with header Bearer: Status: 404
+    Endpoint Not Found (404)
+Testing Public v2 with header Token Header: Status: 404
+    Endpoint Not Found (404)
+Testing Public v2 with header No Auth: Status: 404
+    Endpoint Not Found (404)
+Testing Browser API with header Bearer: Status: 403
+    Failed (403)
+Testing Browser API with header Token Header: Status: 403
+    Failed (403)
+Testing Browser API with header No Auth: Status: 403
+    Failed (403)
+Testing Public v1 with header Bearer: Status: 404
+    Endpoint Not Found (404)
+Testing Public v1 with header Token Header: Status: 404
+    Endpoint Not Found (404)
+Testing Public v1 with header No Auth: Status: 404
+    Endpoint Not Found (404)

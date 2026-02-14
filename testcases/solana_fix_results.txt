@@ -1,0 +1,7 @@
+TEST START
+RPC Status: 200
+RPC Result Count: 5
+Testing https://public-api.solscan.io/utils/v2/account/transactions: Status 404
+Testing https://public-api.solscan.io/v2/account/transactions: Status 404
+Testing https://api.solscan.io/v2/account/transactions: Status 403
+Testing https://api-v2.solscan.io/v2/account/transactions: Status 403

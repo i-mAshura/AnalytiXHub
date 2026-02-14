@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card cyber-card">
+        <div class="card-header bg-black border-bottom border-info">
+            <h4 class="card-title text-info mb-0">
+                <i class="bi bi-receipt me-2"></i>Transaction Analysis
+            </h4>
+        </div>
+        <div class="card-body">
+            {% if tx %}
+            <div class="row g-4">
+                <div class="col-md-12">
+                    <div class="alert alert-dark border border-secondary">
+                        <strong class="text-muted">TRANSACTION HASH:</strong><br>
+                        <span class="font-monospace text-warning fs-5">{{ tx.hash }}</span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-3">SENDER (FROM)</h6>
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="https://img.icons8.com/fluency/48/user-location.png" width="32" class="me-2">
+                                <a href="https://etherscan.io/address/{{ tx.from }}" target="_blank"
+                                    class="text-info font-monospace text-decoration-none">
+                                    {{ tx.from }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-3">RECEIVER (TO)</h6>
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="https://img.icons8.com/fluency/48/target.png" width="32" class="me-2">
+                                <a href="https://etherscan.io/address/{{ tx.to }}" target="_blank"
+                                    class="text-warning font-monospace text-decoration-none">
+                                    {{ tx.to }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped border-secondary">
+                            <tbody>
+                                <tr>
+                                    <th class="text-secondary w-25">Value</th>
+                                    <td class="font-monospace text-light">{{ (tx.value|float / 10**18)|round(6) }} ETH
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-secondary">Block Number</th>
+                                    <td class="font-monospace">{{ tx.blockNumber|int }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-secondary">Gas Price</th>
+                                    <td class="font-monospace">{{ (tx.gasPrice|float / 10**9)|round(2) }} Gwei</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-secondary">Nonce</th>
+                                    <td class="font-monospace">{{ tx.nonce|int }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-secondary">Input Data</th>
+                                    <td class="font-monospace text-break text-muted small">
+                                        {{ tx.input[:100] }}...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-12 text-center mt-3">
+                    <a href="/investigation" class="btn btn-outline-light">Back to Search</a>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-danger">
+                Transaction not found or could not be fetched.
+            </div>
+            <a href="/investigation" class="btn btn-outline-light">Back to Search</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

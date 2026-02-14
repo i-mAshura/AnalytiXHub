@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="text-light mb-4"><i class="bi bi-layers-fill me-2"></i>Batch Analysis & Graph Import</h2>
+    </div>
+
+    <!-- CSV Upload Section -->
+    <div class="col-md-6 mb-4">
+        <div class="card cyber-card h-100">
+            <div class="card-header bg-black border-bottom border-warning">
+                <h5 class="card-title text-warning mb-0">📂 Upload CSV (Addresses or Transactions)</h5>
+            </div>
+            <div class="card-body">
+                <form action="/batch" method="POST" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label class="form-label text-muted">Select CSV File</label>
+                        <input type="file" name="csv_file" class="form-control bg-dark text-light border-secondary"
+                            accept=".csv">
+                        <small class="text-muted d-block mt-2">
+                            Supported formats:<br>
+                            1. <code>Address, Tag, Notes</code> (Batch Analysis)<br>
+                            2. <code>TxHash, From, To, Value, Time</code> (Transaction Graph)
+                        </small>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-warning btn-lg">
+                            <i class="bi bi-upload me-2"></i>Analyze & Generate Graph
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Input Section -->
+    <div class="col-md-6 mb-4">
+        <div class="card cyber-card h-100">
+            <div class="card-header bg-black border-bottom border-info">
+                <h5 class="card-title text-info mb-0">📝 Manual Batch Input</h5>
+            </div>
+            <div class="card-body">
+                <form action="/batch" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Addresses (One per line)</label>
+                        <textarea name="addresses" class="form-control bg-black text-light font-monospace border-info"
+                            rows="8" placeholder="0x...&#10;0x..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Chain</label>
+                        <select name="chain" class="form-select bg-dark text-light border-secondary">
+                            <option value="ethereum">Ethereum</option>
+                            <option value="bsc">BSC</option>
+                            <option value="polygon">Polygon</option>
+                        </select>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-info btn-lg">
+                            <i class="bi bi-lightning-charge me-2"></i>Analyze Addresses
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    {% if batch_status %}
+    <div class="col-12 mt-4">
+        <div class="card cyber-card">
+            <div class="card-header bg-black border-bottom border-success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title text-success mb-0">📊 Analysis Results</h5>
+                    <div>
+                        <span class="badge bg-success me-2">Processed: {{ batch_status.processed }}</span>
+                        {% if batch_status.graph_file %}
+                        <a href="/downloads/graph.gexf" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-diagram-2 me-1"></i>Download Gephi Graph (.gexf)
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if batch_status.results %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Address</th>
+                                <th>TX Count</th>
+                                <th>Risk Score</th>
+                                <th>Threats</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for res in batch_status.results %}
+                            <tr>
+                                <td class="font-monospace text-info">{{ res.address }}</td>
+                                <td>{{ res.transactions }}</td>
+                                <td>
+                                    <span
+                                        class="badge {% if res.risk_score > 70 %}bg-danger{% elif res.risk_score > 30 %}bg-warning{% else %}bg-success{% endif %}">
+                                        {{ res.risk_score }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if res.is_flagged %}
+                                    <span class="badge bg-danger">FLAGGED</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if res.error %}
+                                    <span class="text-danger" title="{{ res.error }}">ERROR</span>
+                                    {% else %}
+                                    <span class="text-success">OK</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No results generated.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
