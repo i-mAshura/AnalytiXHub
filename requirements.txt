@@ -24,3 +24,4 @@ python-engineio==4.8.0
 APScheduler==3.10.4
 graphql-core==3.2.3
 # slither-analyzer==0.9.3
+gunicorn
