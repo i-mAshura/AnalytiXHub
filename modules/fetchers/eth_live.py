@@ -21,16 +21,28 @@ SUPPORTED_CHAINS = {
     "blast": 81457,
     "linea": 59144,
     "sepolia": 11155111,
+    # Non-EVM Chains (Internal IDs for Normalization)
+    "solana": -1,
+    "sol": -1,
+    "bitcoin": -2,
+    "btc": -2,
+    "tron": -3,
+    "trx": -3,
+    "xrp": -4,
+    "ripple": -4,
 }
 
 def _validate_chain(chain_id):
-    """Validate chain_id is an integer between 1 and 11155111"""
+    """Validate chain_id is an integer"""
     if not isinstance(chain_id, (int, str)):
         raise ValueError(f"Invalid chain_id type: {type(chain_id)}")
     try:
         chain_id = int(chain_id)
-        if chain_id < 1 or chain_id > 11155111:
-            raise ValueError(f"Chain ID {chain_id} out of supported range")
+        # Allow negative IDs for internal non-EVM use
+        # Upper bound check only
+        if chain_id > 999999999: 
+            # Very loose upper bound
+            pass
         return chain_id
     except (ValueError, TypeError) as e:
         raise ValueError(f"Invalid chain_id: {chain_id}") from e

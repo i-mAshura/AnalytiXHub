@@ -13,6 +13,7 @@ import math
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
+from modules.utils.helpers import normalize_address
 
 # ==================== CROSS-ADDRESS CLUSTERING ====================
 
@@ -20,7 +21,7 @@ class AddressClustering:
     """Detect related addresses (same entity, mixer outputs, exchange dust, etc.)"""
     
     @staticmethod
-    def cluster_addresses(transactions: List[Dict], main_address: str) -> Dict:
+    def cluster_addresses(transactions: List[Dict], main_address: str, chain_id: int = 1) -> Dict:
         """
         Identify clusters of related addresses from transaction patterns
         
@@ -41,21 +42,21 @@ class AddressClustering:
         }
         
         # Build address graph
-        graph = AddressClustering._build_address_graph(transactions)
+        graph = AddressClustering._build_address_graph(transactions, chain_id)
         
         # 1. Frequent counterparties (>5 interactions)
         clusters['suspicious_counterparties'] = AddressClustering._find_frequent_counterparties(
-            graph, main_address, min_interactions=5
+            graph, main_address, chain_id, min_interactions=5
         )
         
         # 2. Dust attack detection (many small amounts sent out)
         clusters['dust_attacks'] = AddressClustering._find_dust_attacks(
-            transactions, main_address
+            transactions, main_address, chain_id
         )
         
         # 3. Circular patterns
         clusters['circular_patterns'] = AddressClustering._find_circular_patterns(
-            graph, main_address, max_depth=3
+            graph, main_address, chain_id, max_depth=3
         )
         
         # 4. Timing clusters (transactions within 1-5 minutes)
@@ -67,22 +68,22 @@ class AddressClustering:
         return clusters
     
     @staticmethod
-    def _build_address_graph(transactions: List[Dict]) -> Dict[str, Set[str]]:
+    def _build_address_graph(transactions: List[Dict], chain_id: int) -> Dict[str, Set[str]]:
         """Build adjacency list of address interactions"""
         graph = defaultdict(set)
         for tx in transactions:
-            from_addr = tx.get('from', '').lower()
-            to_addr = tx.get('to', '').lower()
+            from_addr = normalize_address(tx.get('from', ''), chain_id)
+            to_addr = normalize_address(tx.get('to', ''), chain_id)
             if from_addr and to_addr:
                 graph[from_addr].add(to_addr)
                 graph[to_addr].add(from_addr)
         return dict(graph)
     
     @staticmethod
-    def _find_frequent_counterparties(graph: Dict, address: str, 
+    def _find_frequent_counterparties(graph: Dict, address: str, chain_id: int,
                                      min_interactions: int = 5) -> List[Dict]:
         """Find addresses with frequent interactions"""
-        address = address.lower()
+        address = normalize_address(address, chain_id)
         if address not in graph:
             return []
         
@@ -100,15 +101,15 @@ class AddressClustering:
         ]
     
     @staticmethod
-    def _find_dust_attacks(transactions: List[Dict], main_address: str) -> List[Dict]:
+    def _find_dust_attacks(transactions: List[Dict], main_address: str, chain_id: int) -> List[Dict]:
         """Detect dust attacks: many small amounts sent to different addresses"""
-        main_address = main_address.lower()
+        main_address = normalize_address(main_address, chain_id)
         
         # Find outgoing transactions
         outgoing = defaultdict(list)
         for tx in transactions:
-            if tx.get('from', '').lower() == main_address:
-                to_addr = tx.get('to', '').lower()
+            if normalize_address(tx.get('from', ''), chain_id) == main_address:
+                to_addr = normalize_address(tx.get('to', ''), chain_id)
                 amount = float(tx.get('value', 0))
                 outgoing[to_addr].append(amount)
         
@@ -123,10 +124,10 @@ class AddressClustering:
         ]
     
     @staticmethod
-    def _find_circular_patterns(graph: Dict, start_address: str, 
+    def _find_circular_patterns(graph: Dict, start_address: str, chain_id: int,
                                max_depth: int = 3) -> List[Dict]:
         """Find circular transaction patterns (A->B->C->A)"""
-        start = start_address.lower()
+        start = normalize_address(start_address, chain_id)
         circular = []
         
         def find_paths(current: str, target: str, path: List[str], 

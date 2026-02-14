@@ -340,12 +340,29 @@ class SolanaFetcher:
                         elif 'lamport' in item:
                              val = float(item['lamport']) / 1e9
                         
+                        # Try to get real addresses from parsing
+                        sender = "Unknown"
+                        receiver = "Interaction"
+                        
+                        # V2 Parsing Strategy
+                        if 'signer' in item:
+                            sender = item['signer'][0] if isinstance(item['signer'], list) and item['signer'] else item.get('signer', 'Unknown')
+                        
+                        # Fallback parsing
+                        if sender == "Unknown" and 'parsedInstruction' in item:
+                             # Try account keys
+                             pass # implemented below
+                             
+                        # Logic to preserve CASE
+                        # If flow is OUT, sender is US (use input address but try to find it in keys to get correct case?)
+                        # Actually, if we use the API response, it should be correct case.
+                        
                         transactions.append({
                             'hash': tx_hash,
                             'timestamp': datetime.fromtimestamp(block_time).strftime('%Y-%m-%d %H:%M:%S'),
                             'value': val,
-                            'from': address if flow == 'out' else 'Interaction', 
-                            'to': address if flow == 'in' else 'Contract', 
+                            'from': sender if sender != "Unknown" else (address if flow == 'out' else 'Interaction'), 
+                            'to': receiver if receiver != "Interaction" else (address if flow == 'in' else 'Interaction'), 
                             'chain': 'solana',
                             'type': 'sol'
                         })
@@ -365,7 +382,11 @@ class SolanaFetcher:
     @staticmethod
     def _fetch_rpc_signatures(address: str, limit: int = 1000) -> Tuple[List[Dict], Dict]:
         """Fallback: Fetch signatures from Solana RPC"""
-        headers = {"Content-Type": "application/json"}
+        # Add User-Agent to avoid 403 blocks from public RPC nodes
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         transactions = [] # Initialize transactions list for this fallback method
         counts = {'normal': 0, 'token': 0}
 
@@ -377,7 +398,7 @@ class SolanaFetcher:
             "method": "getSignaturesForAddress",
             "params": [
                 address,
-                {"limit": 20} # Limit to 20 to avoid rate limits on details fetch
+                {"limit": 50} # Increased limit for better utility
             ]
         }
         

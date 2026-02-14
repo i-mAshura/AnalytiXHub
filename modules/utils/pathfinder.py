@@ -18,8 +18,8 @@ class PathFinder:
         Returns a cytoscape-compatible element list representing the path.
         """
         print(f"[PathFinder] DEBUG START: {source} -> {target}")
-        source = source.lower()
-        target = target.lower()
+        source = self.client._normalize_address(source, chain_id)
+        target = self.client._normalize_address(target, chain_id)
         
         # Bi-directional search could be better, but simple BFS is safer for API limits
         queue = [(source, [source])] # (current_addr, path)

@@ -2,6 +2,7 @@ import pandas as pd
 import networkx as nx
 from datetime import datetime
 from collections import Counter, defaultdict
+from modules.utils.helpers import normalize_address
 
 # Enhanced entity database
 KNOWN_ENTITIES = {
@@ -262,8 +263,8 @@ def analyze_live_eth(txlist, root_address, start_date=None, end_date=None, chain
 
         filtered_txs.append(tx)
         
-        frm = tx.get("from")
-        to = tx.get("to")
+        frm = normalize_address(tx.get("from"), chain_id)
+        to = normalize_address(tx.get("to"), chain_id)
         
         raw_val = tx.get("value", 0)
         
@@ -296,11 +297,13 @@ def analyze_live_eth(txlist, root_address, start_date=None, end_date=None, chain
 
         G.add_edge(frm, to, value=val, label=f"{val:.2f} ETH")
 
-        if to and to.lower() == root_address.lower():
+        root_norm = normalize_address(root_address, chain_id)
+
+        if to and to == root_norm:
             total_in += val
             all_victims.append(frm)
             incoming_addresses[frm] += val
-        elif frm and frm.lower() == root_address.lower():
+        elif frm and frm == root_norm:
             total_out += val
             all_suspects.append(to)
             outgoing_addresses[to] += val

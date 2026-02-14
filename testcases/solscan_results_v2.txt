@@ -1,0 +1,37 @@
+STARTING TESTS
+Testing Pro v2 with header Bearer: Status: 401
+    Failed (401) - Body: {"error_message":"Token is missing"}
+Testing Pro v2 with header Token Header: Status: 401
+    Failed (401) - Body: {"error_message":"Unauthorized: Please upgrade your api key level."}
+Testing Pro v2 with header No Auth: Status: 401
+    Failed (401) - Body: {"error_message":"Token is missing"}
+Testing Public v2 (No v2 path) with header Bearer: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (No v2 path) with header Token Header: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (No v2 path) with header No Auth: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (With v2.0 path) with header Bearer: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (With v2.0 path) with header Token Header: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (With v2.0 path) with header No Auth: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (With v2 path) with header Bearer: Status: 403
+    Failed (403) - Body: <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]--> <!--[if IE 8]>    <html class="no-
+Testing Public v2 (With v2 path) with header Token Header: Status: 403
+    Failed (403) - Body: <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]--> <!--[if IE 8]>    <html class="no-
+Testing Public v2 (With v2 path) with header No Auth: Status: 403
+    Failed (403) - Body: <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]--> <!--[if IE 8]>    <html class="no-
+Testing Public v2 (Transfers) with header Bearer: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (Transfers) with header Token Header: Status: 404
+    Failed (404) - Body: 
+Testing Public v2 (Transfers) with header No Auth: Status: 404
+    Failed (404) - Body: 
+Testing Browser API with header Bearer: Status: 403
+    Failed (403) - Body: <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]--> <!--[if IE 8]>    <html class="no-
+Testing Browser API with header Token Header: Status: 403
+    Failed (403) - Body: <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]--> <!--[if IE 8]>    <html class="no-
+Testing Browser API with header No Auth: Status: 403
+    Failed (403) - Body: <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]--> <!--[if IE 8]>    <html class="no-

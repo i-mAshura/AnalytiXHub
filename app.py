@@ -251,7 +251,7 @@ def investigation():
                 # 1. Cross-Address Clustering (#2)
                 if ADVANCED_FEATURES_AVAILABLE and txs:
                     try:
-                        clustering = AddressClustering.cluster_addresses(txs, address)
+                        clustering = AddressClustering.cluster_addresses(txs, address, chain_id)
                         current_case["clustering_results"] = clustering
                         print(f"[+] Cross-address clustering: {len(clustering)} patterns detected")
                     except Exception as e:
@@ -503,7 +503,12 @@ def timeline():
     
     address = current_case.get("address")
     chain_id = current_case.get("chain_id", 1)
-    txs_data = fetch_eth_address(address, ETHERSCAN_KEY, chain_id=chain_id, include_internal=True, include_token_transfers=True) if ETHERSCAN_KEY else []
+    
+    # USE EXISTING TRANSACTIONS (Multi-Chain Support)
+    txs_data = current_case.get("transactions", [])
+    if not txs_data and ETHERSCAN_KEY:
+         # Fallback only if no data
+         txs_data = fetch_eth_address(address, ETHERSCAN_KEY, chain_id=chain_id, include_internal=True, include_token_transfers=True)
     
     timeline_file = create_timeline_visualization(txs_data, address)
     
@@ -528,6 +533,22 @@ def sankey():
     
     flash("Failed to generate Sankey diagram. Ensure enough transaction data exists.", "error")
     return redirect(url_for('investigation'))
+
+@app.route("/heatmap", methods=["POST"])
+def heatmap():
+    """Generate Heatmap"""
+    if not current_case["summary"]:
+        return "No data available.", 400
+        
+    address = current_case.get("address")
+    txs_data = current_case.get("transactions", [])
+    
+    heatmap_file = create_heatmap_visualization(txs_data, address)
+    
+    if heatmap_file and os.path.exists(heatmap_file):
+        return send_file(heatmap_file, as_attachment=True, download_name="heatmap.png")
+        
+    return "Failed to generate heatmap", 500
 
 # Legal/FIR Report Route
 @app.route("/legal_report", methods=["POST"])
@@ -726,24 +747,7 @@ ADDRESSES TRACKED:
     
     return report_content, 200, {'Content-Type': 'text/plain'}
 
-# Heatmap Visualization Route
-@app.route("/heatmap", methods=["POST"])
-def heatmap():
-    """Generate activity heatmap"""
-    if not current_case["summary"]:
-        return "No data available. Please perform an analysis first.", 400
-    
-    address = current_case.get("address")
-    chain_id = current_case.get("chain_id", 1)
-    txs_data = fetch_eth_address(address, ETHERSCAN_KEY, chain_id=chain_id, include_internal=True, include_token_transfers=True) if ETHERSCAN_KEY else []
-    
-    heatmap_file = create_heatmap_visualization(txs_data, address)
-    
-    if heatmap_file and os.path.exists(heatmap_file):
-        return send_file(heatmap_file, as_attachment=True, download_name="activity_heatmap.png")
-    
-    flash("Failed to generate heatmap. Ensure transaction data is available.", "error")
-    return redirect(url_for('investigation'))
+
 
 
 # ==================== BATCH PROCESSING ROUTE (#8) ====================
@@ -781,8 +785,18 @@ def batch_processing():
                         G = nx.DiGraph()
                         
                         for _, row in df.iterrows():
-                            src = str(row['from']).lower()
-                            dst = str(row['to']).lower()
+                            # Determine if EVM (for lowercasing) or other (preserve case)
+                            # Simple heuristic: if 'chain' column exists, use it. Otherwise default to Ethereum (lowercase)
+                            chain_col = row.get('chain', 'ethereum').lower()
+                            is_evm = chain_col in ['ethereum', 'eth', 'bsc', 'matic', 'polygon', 'arbitrum', 'optimism']
+                            
+                            src = str(row['from']).strip()
+                            dst = str(row['to']).strip()
+                            
+                            if is_evm:
+                                src = src.lower()
+                                dst = dst.lower()
+                            
                             val = row.get('value', row.get('amount', 0))
                             
                             # Add nodes

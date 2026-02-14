@@ -18,7 +18,25 @@ def create_timeline_visualization(txlist, root_address, output_file="exports/tim
     events = []
     for tx in txlist:
         try:
-            ts = int(tx.get("timeStamp", 0))
+            # Handle mixed timestamp formats
+            raw_ts = tx.get("timeStamp") or tx.get("timestamp") or 0
+            if isinstance(raw_ts, str):
+                try:
+                    # Try generic ISO/DateTime format
+                    if "-" in raw_ts and ":" in raw_ts:
+                         dt = datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S")
+                         ts = dt.timestamp()
+                    else:
+                        ts = float(raw_ts)
+                except:
+                    # Fallback for ISO with T?
+                     try:
+                        dt = datetime.fromisoformat(raw_ts.replace('Z', '+00:00'))
+                        ts = dt.timestamp()
+                     except:
+                        ts = 0
+            else:
+                ts = int(raw_ts)
             frm = tx.get("from", "Unknown")
             to = tx.get("to", "Unknown")
             val = float(tx.get("value", 0)) / 1e18
@@ -177,7 +195,25 @@ def create_heatmap_visualization(txlist, root_address, output_file="exports/heat
     
     for tx in txlist:
         try:
-            ts = int(tx.get("timeStamp", 0))
+            # Handle mixed timestamp formats
+            raw_ts = tx.get("timeStamp") or tx.get("timestamp") or 0
+            ts = 0
+            if isinstance(raw_ts, str):
+                try:
+                    if "-" in raw_ts and ":" in raw_ts:
+                         dt_obj = datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S")
+                         ts = dt_obj.timestamp()
+                    else:
+                        ts = float(raw_ts)
+                except:
+                     try:
+                        dt_obj = datetime.fromisoformat(raw_ts.replace('Z', '+00:00'))
+                        ts = dt_obj.timestamp()
+                     except:
+                        pass
+            else:
+                ts = int(raw_ts)
+                
             date = datetime.fromtimestamp(ts)
             day = date.weekday()  # 0-6
             hour = date.hour  # 0-23

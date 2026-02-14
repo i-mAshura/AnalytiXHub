@@ -3,7 +3,7 @@ import json
 import random
 import os
 print(f"DEBUG: Loading breadcrumbs_client.py. OS module: {os}")
-from .multi_chain import MultiChainFetcher
+from modules.utils.helpers import normalize_address
 
 class BreadcrumbsClient:
     """
@@ -14,15 +14,17 @@ class BreadcrumbsClient:
         self.etherscan_key = etherscan_key
         self.breadcrumbs_key = breadcrumbs_key
         
+    # def _normalize_address(self, address, chain_id_or_name): -> REPLACED BY SHARED HELPER
+
     def get_graph_data(self, address, chain_id=1):
         """
         Fetch data and convert to Cytoscape JSON format using Breadcrumbs API
         """
         try:
-            print(f"DEBUG: get_graph_data called. OS is: {os}")
+            # print(f"DEBUG: get_graph_data called. OS is: {os}")
             breadcrumbs_key = os.getenv("BREADCRUMBS_API_KEY", self.breadcrumbs_key)
         except NameError as e:
-            print(f"CRITICAL ERROR: 'os' not defined in get_graph_data! {e}")
+            # print(f"CRITICAL ERROR: 'os' not defined in get_graph_data! {e}")
             import os as runtime_os
             breadcrumbs_key = runtime_os.getenv("BREADCRUMBS_API_KEY", self.breadcrumbs_key)
         
@@ -44,15 +46,18 @@ class BreadcrumbsClient:
         c_str = str(chain_id).lower()
         bc_chain = chain_map.get(chain_id, chain_map.get(c_str, 'eth'))
         
+        # NORMALIZE ADDRESS BASED ON CHAIN
+        norm_address = normalize_address(address, chain_id)
+        
         elements = []
         nodes = set()
         
         # Add Root Node
         root_data = {
             "data": {
-                "id": address.lower(),
-                "label": f"{address[:6]}...{address[-4:]}",
-                "full_address": address,
+                "id": norm_address, # Use normalized ID
+                "label": f"{norm_address[:6]}...{norm_address[-4:]}",
+                "full_address": norm_address,
                 "type": "target",
                 "risk": 50,
                 "icon": "https://img.icons8.com/fluency/48/000000/target.png"
@@ -60,16 +65,15 @@ class BreadcrumbsClient:
             "classes": "root"
         }
         elements.append(root_data)
-        nodes.add(address.lower())
+        nodes.add(norm_address)
 
-        txs = []
         txs = []
         
         # FORCE SOLSCAN FOR SOLANA (User Requirement)
         if bc_chain in ['sol', 'solana']:
             print("Force-routing Solana to Solscan (MultiChainFetcher)...")
             try:
-                txs, counts = MultiChainFetcher.fetch_by_chain('solana', address)
+                txs, counts = MultiChainFetcher.fetch_by_chain('solana', address) # Use original address for fetch
             except Exception as e:
                 print(f"Error fetching from Solscan: {e}")
                 txs = []
@@ -120,23 +124,29 @@ class BreadcrumbsClient:
             txs.extend(mock_txs)
 
         for tx in txs[:MAX_NODES]:
-            frm = str(tx.get('from_address') or tx.get('from', '')).lower()
-            to = str(tx.get('to_address') or tx.get('to', '')).lower()
+            # Normalize neighbors too
+            frm_raw = str(tx.get('from_address') or tx.get('from', ''))
+            to_raw = str(tx.get('to_address') or tx.get('to', ''))
+            
+            if not frm_raw or not to_raw: continue
+
+            frm = normalize_address(frm_raw, chain_id)
+            to = normalize_address(to_raw, chain_id)
+            
             val = float(tx.get('value', 0))
             ts = tx.get('time', '2024-02-10')
             hash_ = tx.get('hash', f"tx_{random.randint(1000,9999)}")
             
-            if not frm or not to: continue
-            
-            if frm == address.lower(): neighbor = to
-            elif to == address.lower(): neighbor = frm
+            # Use strict string comparison for filtering, since we normalized everything
+            if frm == norm_address: neighbor = to
+            elif to == norm_address: neighbor = frm
             else: continue
             
             if neighbor in nodes: continue
             
             # Add Node with Enrichment
             if neighbor not in nodes:
-                meta = self._enrich_node(neighbor)
+                meta = self._enrich_node(neighbor, chain_id) # Update enrich signature
                 elements.append({
                     "data": {
                         "id": neighbor,
@@ -218,20 +228,17 @@ class BreadcrumbsClient:
         seen_nodes = set()
         
         # Add Root Node manually first to ensure it exists
-        root_data = {
-            "data": {
-                "id": address.lower(),
-                "label": f"{address[:6]}...{address[-4:]}",
-                "full_address": address,
-                "type": "target",
-                "risk": 99,
-                "icon": "https://img.icons8.com/fluency/48/000000/target.png" 
-            },
-            "classes": "root"
-        }
-        all_elements.append(root_data)
-        seen_nodes.add(address.lower())
-
+        # NOTE: For "All Chains", we assume Ethereum-style normalization unless detected otherwise,
+        # but since we create separate API calls, each call will normalize its own part.
+        
+        # However, for the ROOT node of the mixed graph, we should probably stick to the input casing 
+        # IF it's likely non-EVM. But let's just add it as-is for now, and let get_graph_data add its own roots/edges.
+        
+        # Actually, get_graph_data adds the root node. We just need to merge them.
+        # But if we want a single root node for the visualization, we need a consistent ID.
+        # If the address is EVM, it will be lowercased by get_graph_data(1).
+        # If it's SOL, it will be kept by get_graph_data('solana').
+        
         # Parallel Fetch
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             # Map simplified wrapper to pass single arg
@@ -257,12 +264,13 @@ class BreadcrumbsClient:
                     
         return all_elements
 
-    def _enrich_node(self, address):
+    def _enrich_node(self, address, chain_id=1):
         """
         Return metadata (icon, type, risk) for an address.
         Includes HARDCODED intelligence for the Wannacry demo to match Reference Image.
         """
-        address = address.lower()
+        # Compare normalized for logic, but display label can differ
+        addr_lower = address.lower()
         
         # WANNACRY KNOWN ADDRESSES
         wannacry_list = [
@@ -271,7 +279,7 @@ class BreadcrumbsClient:
             '115p7ummngoj1pmvkphijcrdfjnxj6lrln'
         ]
         
-        if address in wannacry_list:
+        if addr_lower in wannacry_list:
             return {
                 'type': 'ransomware',
                 'risk': 100,
@@ -280,16 +288,16 @@ class BreadcrumbsClient:
             }
             
         # REFERENCE IMAGE ENTITIES (Simulated Intelligence)
-        if address.startswith('1ndy') or address.startswith('0xbinance'):
+        if addr_lower.startswith('1ndy') or addr_lower.startswith('0xbinance'):
             return { 'type': 'exchange', 'risk': 10, 'icon': 'https://img.icons8.com/color/48/binance.png', 'label': "Binance Hot Wallet" }
             
-        if address.startswith('1lck'):
+        if addr_lower.startswith('1lck'):
              return { 'type': 'exchange', 'risk': 15, 'icon': 'https://s2.coinmarketcap.com/static/img/exchanges/64/270.png', 'label': "Bybit 15pX...bQCk" }
 
-        if address.startswith('1dzl'):
+        if addr_lower.startswith('1dzl'):
              return { 'type': 'exchange', 'risk': 5, 'icon': 'https://img.icons8.com/color/48/crypto-com.png', 'label': "Crypto.com" }
              
-        if address.startswith('1end'):
+        if addr_lower.startswith('1end'):
              return { 'type': 'wallet', 'risk': 60, 'icon': 'https://img.icons8.com/fluency/48/wallet.png', 'label': "1EndV...kDdE" }
 
         # Default
